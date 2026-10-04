@@ -9,6 +9,8 @@ import {
 	diffLineKind,
 	diffPreview,
 	diffStats,
+	keyLabel,
+	normalizeKeyId,
 	previewLines,
 	summarizeArgs,
 	tailLines,
@@ -58,5 +60,18 @@ assert.deepEqual(tailLines(["a"], 2), { shown: ["a"], hidden: 0 });
 assert.equal(textOf([{ type: "text", text: "hi" }, { type: "image" }]), "hi");
 assert.deepEqual(toLines("\n a \n b \n"), ["a ", " b"]);
 assert.equal(clip("abcdef", 4), "abc…");
+
+// key bindings: the canonical id is what pi's shortcut registry sees
+assert.equal(normalizeKeyId("super+e"), "super+e");
+assert.equal(normalizeKeyId("Ctrl+Shift+X"), "ctrl+shift+x", "case and modifier order are normalised");
+assert.equal(normalizeKeyId("shift+ctrl+x"), "ctrl+shift+x");
+assert.equal(normalizeKeyId("pageup"), "pageUp", "pi's own spelling is restored");
+assert.equal(normalizeKeyId("ctrl+o"), "ctrl+o");
+assert.equal(normalizeKeyId("ctrl+ctrl+x"), undefined, "a repeated modifier is not a key");
+assert.equal(normalizeKeyId("hyper+x"), undefined);
+assert.equal(normalizeKeyId("ctrl+"), undefined);
+assert.equal(normalizeKeyId(""), undefined);
+assert.equal(keyLabel("super+e"), "⌘E");
+assert.equal(keyLabel("ctrl+shift+pageDown"), "⌃⇧PageDown");
 
 console.log("squint logic: ok");

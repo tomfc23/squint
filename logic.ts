@@ -222,3 +222,43 @@ export function diffPreview(diff: string, limit: number, includeContext = false)
 	const source = includeContext || changes.length === 0 ? all : changes;
 	return previewLines(source, limit);
 }
+
+/* ------------------------------------------------------------------ *
+ * key bindings — pure parsing so /squint can validate what the user types
+ * ------------------------------------------------------------------ */
+
+const MODIFIER_ORDER = ["ctrl", "shift", "alt", "super"] as const;
+
+/** pi wants pageUp/pageDown; people type pageup/pagedown. Canonicalise those two. */
+const SPECIAL_KEYS: Record<string, string> = { pageup: "pageUp", pagedown: "pageDown" };
+
+// Mirrors the key syntax from pi's keybindings reference: modifiers, letters, digits,
+// specials, function keys, and the symbol row.
+const BASE_KEY = /^(?:[a-z0-9]|escape|esc|enter|return|tab|space|backspace|delete|insert|clear|home|end|pageup|pagedown|up|down|left|right|f(?:[1-9]|1[0-2])|[`\-=[\]\\;',./!@#$%^&*()_+|~{}:<>?])$/;
+
+/**
+ * A user-typed binding ("Ctrl+Shift+X") to the canonical id pi expects ("ctrl+shift+x"),
+ * or undefined when it is not a key at all. Modifiers are reordered, so the id is stable.
+ */
+export function normalizeKeyId(raw: string | undefined): string | undefined {
+	const parts = (raw ?? "").split("+").map((part) => part.trim().toLowerCase()).filter(Boolean);
+	if (parts.length === 0) return undefined;
+	const base = parts[parts.length - 1];
+	if (!BASE_KEY.test(base)) return undefined;
+	const modifiers = parts.slice(0, -1);
+	if (modifiers.some((mod) => !(MODIFIER_ORDER as readonly string[]).includes(mod))) return undefined;
+	if (new Set(modifiers).size !== modifiers.length) return undefined;
+	const ordered = MODIFIER_ORDER.filter((mod) => modifiers.includes(mod));
+	return [...ordered, SPECIAL_KEYS[base] ?? base].join("+");
+}
+
+const MODIFIER_GLYPH: Record<string, string> = { ctrl: "⌃", shift: "⇧", alt: "⌥", super: "⌘" };
+
+/** "super+e" -> "⌘E". Display only; the binding itself is the canonical id. */
+export function keyLabel(id: string): string {
+	const parts = id.split("+");
+	const base = parts.pop() ?? id;
+	const glyphs = parts.map((mod) => MODIFIER_GLYPH[mod] ?? mod).join("");
+	const shown = base.length === 1 ? base.toUpperCase() : base.charAt(0).toUpperCase() + base.slice(1);
+	return `${glyphs}${shown}`;
+}

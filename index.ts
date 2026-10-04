@@ -1,9 +1,10 @@
 /**
  * squint — compact transcript rendering for pi, in five interchangeable directions.
  *
- * Every tool call becomes one row: a header plus a short preview, with the full output on
- * click or the expand shortcut (Cmd+E by default). The direction decides how that row is
- * drawn — see directions.ts for the layouts, and /squint to switch between them.
+ * Every tool call becomes one row: a header plus a short preview, with the full output on click or
+ * the configured expand shortcut (⌘E by default). The direction decides how that row is drawn —
+ * see directions.ts for the layouts, and /squint to switch between them, hand tool calls back to
+ * pi ("off"), or describe a new direction to build ("custom").
  *
  *   rail    a trace spine; nested work hangs off its parent   (default)
  *   ledger  one aligned line per call, output only on open
@@ -21,8 +22,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { ExtensionAPI, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
-import { type Component, Key, MouseRegion, parseColor } from "@earendil-works/pi-tui";
+import { fileURLToPath } from "node:url";
+import type { ExtensionAPI, ExtensionCommandContext, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
+import { type Component, type KeyId, MouseRegion, parseColor } from "@earendil-works/pi-tui";
 import {
 	buildRow,
 	DEFAULT_DIRECTION,
@@ -35,37 +37,97 @@ import {
 	type Row,
 	type Seg,
 } from "./directions.ts";
-import { classify, textOf, TONE_HEX, type Classification, type Tone } from "./logic.ts";
+import { classify, keyLabel, normalizeKeyId, textOf, TONE_HEX, type Classification, type Tone } from "./logic.ts";
 
 const BADGE_FG = "#181a20";
-/** Owned by this extension; the built-in app.tools.expand binding is disabled in keybindings.json. */
-const EXPAND_KEY = Key.super("e");
-/** Hint label; pi formats super as "super", so show the mac glyph instead of the binding text. */
-const EXPAND_LABEL = "⌘E";
+
+/** Every render mode: a real direction, or "off" for pi's own tool rendering. */
+type Mode = Direction | "off";
+const OFF = "off" as const;
 
 /* ------------------------------------------------------------------ *
  * settings — ~/.pi/agent/squint.json
  * ------------------------------------------------------------------ */
 const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");
 const SETTINGS_FILE = join(AGENT_DIR, "squint.json");
-
-function loadDirection(): Direction {
+/** Where this extension lives; quoted back to pi when it builds a custom direction. */
+const HERE = (() => {
 	try {
-		const saved = JSON.parse(readFileSync(SETTINGS_FILE, "utf8")) as { direction?: unknown };
-		if (isDirection(saved.direction)) return saved.direction;
+		return dirname(fileURLToPath(import.meta.url));
 	} catch {
-		// No settings yet, or unreadable: the default is rail.
+		return join(AGENT_DIR, "extensions", "squint");
 	}
-	return DEFAULT_DIRECTION;
+})();
+
+const DEFAULT_KEY = "super+e";
+
+interface Settings {
+	direction: Mode;
+	/** The expand/collapse shortcut, as a canonical pi key id. */
+	key: string;
+	/** The instructions last handed to /squint custom, kept as the editor's prefill. */
+	custom?: { instructions: string };
 }
 
-function saveDirection(direction: Direction): void {
+const isMode = (value: unknown): value is Mode => value === OFF || isDirection(value);
+
+function loadSettings(): Settings {
+	try {
+		const saved = JSON.parse(readFileSync(SETTINGS_FILE, "utf8")) as Partial<Settings>;
+		return {
+			direction: isMode(saved.direction) ? saved.direction : DEFAULT_DIRECTION,
+			key: normalizeKeyId(saved.key) ?? DEFAULT_KEY,
+			custom: typeof saved.custom?.instructions === "string" ? { instructions: saved.custom.instructions } : undefined,
+		};
+	} catch {
+		// No settings yet, or unreadable: rail and Cmd+E.
+	}
+	return { direction: DEFAULT_DIRECTION, key: DEFAULT_KEY };
+}
+
+function saveSettings(settings: Settings): void {
 	try {
 		mkdirSync(dirname(SETTINGS_FILE), { recursive: true });
-		writeFileSync(SETTINGS_FILE, `${JSON.stringify({ direction }, null, 2)}\n`);
+		writeFileSync(SETTINGS_FILE, `${JSON.stringify(settings, null, 2)}\n`);
 	} catch {
-		// A read-only home must not break the transcript; the session keeps the picked direction.
+		// A read-only home must not break the transcript; the session keeps the picked mode.
 	}
+}
+
+/**
+ * The prompt pi follows to build a user's own direction. One string, so the whole workflow —
+ * preview, confirmation, implementation, cleanup — is readable in one place.
+ */
+function customPrompt(instructions: string): string {
+	return [
+		"Build a new squint render direction from these instructions:",
+		"",
+		instructions,
+		"",
+		`squint is the extension in ${HERE} (directions.ts, logic.ts, index.ts, README.md). Read the`,
+		`"Adding a direction" section and the existing renderers first. The direction must fit the same`,
+		"contract: a pure layout returning styled segments, the first line is the head, one segment is",
+		"one physical line, and every line fits the terminal width.",
+		"",
+		"Do this in order, and do not skip the preview:",
+		"",
+		"1. Design the layout against the cases every direction already covers: read, grep, an edit",
+		"   diff, a shell tail, an error, a pending call, and nested calls.",
+		"2. Write a single self-contained static page (inline CSS and JS) in a fresh temp dir under",
+		"   os.tmpdir() that shows the new direction beside `rail` on the same real cases, then serve",
+		"   it locally (`python3 -m http.server 0 --directory <dir>`) and print the URL. Let me open it.",
+		"3. Ask me to confirm the preview and stop there. If I ask for changes, revise the preview and",
+		"   ask again; do not touch the extension until I confirm.",
+		`4. On confirmation, implement the direction in ${join(HERE, "directions.ts")}: add the id to`,
+		"   `Direction` and `DIRECTIONS`, write the renderer, add the `layout()` case and a",
+		"   `collapsedLimit()` case, then run `node directions.test.ts` and `node logic.test.ts` and fix",
+		"   until both are green.",
+		"5. Delete the temp preview directory and stop the local server.",
+		"6. Optimise: re-read the renderer for needless work on the render path and remove it; report",
+		"   what changed in a few lines.",
+		"",
+		"Touch only the squint files above and the temp preview directory.",
+	].join("\n");
 }
 
 /* ------------------------------------------------------------------ *
@@ -171,8 +233,12 @@ class SquintRow implements Component {
  * the extension
  * ------------------------------------------------------------------ */
 export default function squint(pi: ExtensionAPI) {
-	let direction: Direction = loadDirection();
+	const settings = loadSettings();
+	let direction: Mode = settings.direction;
 	let latestId: string | null = null;
+	/** Read once per load; a new binding only takes effect after /reload (or ctx.reload()). */
+	const key = settings.key;
+	const expandLabel = keyLabel(key);
 
 	const expanded = new Set<string>();
 	const invalidators = new Map<string, () => void>();
@@ -189,7 +255,7 @@ export default function squint(pi: ExtensionAPI) {
 	 * The expansion hint's verb. Only the newest row owns the keyboard binding; older rows expand by
 	 * click. Plain text, styled by the row itself, so this stays off the package's theme singleton.
 	 */
-	const keyHint = (id: string) => (action: string) => (id === latestId ? `${EXPAND_LABEL} ${action}` : `click ${action}`);
+	const keyHint = (id: string) => (action: string) => (id === latestId ? `${expandLabel} ${action}` : `click ${action}`);
 
 	const toggle = (id: string | null) => {
 		if (!id) return;
@@ -198,11 +264,26 @@ export default function squint(pi: ExtensionAPI) {
 		invalidators.get(id)?.();
 	};
 
-	/** Switch direction and redraw every row already on screen. */
-	const apply = (next: Direction) => {
+	/**
+	 * Switch mode and redraw every row already on screen. Returns true when the runtime has to
+	 * reload: "off" changes which renderers win, and those are fixed when a row is built.
+	 */
+	const apply = (next: Mode): boolean => {
+		const reload = next === OFF || direction === OFF;
 		direction = next;
-		saveDirection(next);
-		for (const invalidate of invalidators.values()) invalidate();
+		settings.direction = next;
+		saveSettings(settings);
+		if (!reload) for (const invalidate of invalidators.values()) invalidate();
+		return reload;
+	};
+
+	/** Store a binding; the shortcut is only re-read when the extension reloads. */
+	const setKey = (raw: string | undefined): boolean => {
+		const id = normalizeKeyId(raw);
+		if (!id) return false;
+		settings.key = id;
+		saveSettings(settings);
+		return true;
 	};
 
 	const state = (id: string): Live => {
@@ -214,6 +295,9 @@ export default function squint(pi: ExtensionAPI) {
 		return current;
 	};
 
+	/** The direction to lay out with; "off" never reaches a squint component, but be safe. */
+	const activeDirection = (): Direction => (direction === OFF ? DEFAULT_DIRECTION : direction);
+
 	function nestedRows(parentId: string, depth: number): Row[] {
 		if (depth >= 2) return [];
 		return (children.get(parentId) ?? []).map((child) => childRow(child, depth));
@@ -221,7 +305,7 @@ export default function squint(pi: ExtensionAPI) {
 
 	function childRow(child: Child, depth: number): Row {
 		// A child row is always drawn open: it only exists once its parent is being shown expanded.
-		return buildRow(direction, classify(child.toolName), {
+		return buildRow(activeDirection(), classify(child.toolName), {
 			args: child.args,
 			text: child.text,
 			isError: child.isError,
@@ -236,7 +320,7 @@ export default function squint(pi: ExtensionAPI) {
 		const current = live.get(id);
 		const start = startedAt.get(id);
 		const finished = duration.get(id);
-		return buildRow(direction, info, {
+		return buildRow(activeDirection(), info, {
 			args: current?.args,
 			text: current?.text ?? "",
 			diff: current?.diff,
@@ -274,7 +358,7 @@ export default function squint(pi: ExtensionAPI) {
 		const stamp = themeStamp(theme);
 		const hit = rendered.get(id);
 		if (hit && hit.key === key && hit.stamp === stamp) return hit;
-		const lines = layout(direction, rowFor(info, id), cols, isOpen(id), { keyHint: keyHint(id) }).map((line) => styleSegs(theme, line));
+		const lines = layout(activeDirection(), rowFor(info, id), cols, isOpen(id), { keyHint: keyHint(id) }).map((line) => styleSegs(theme, line));
 		const fresh: Rendered = { key, stamp, head: lines.slice(0, 1), body: lines.slice(1) };
 		// A long session touches thousands of rows; the cap keeps the cache from outgrowing the transcript.
 		if (rendered.size > 2000) rendered.clear();
@@ -297,7 +381,7 @@ export default function squint(pi: ExtensionAPI) {
 	// Thinking blocks are core-rendered, so this extension only relabels the collapsed line;
 	// settings.json sets hideThinkingBlock so they start minimized like a tool row.
 	pi.on("session_start", (_event, ctx) => {
-		ctx.ui.setHiddenThinkingLabel("THINK · click to expand");
+		if (direction !== OFF) ctx.ui.setHiddenThinkingLabel("THINK · click to expand");
 	});
 
 	pi.on("tool_execution_start", (event) => {
@@ -353,48 +437,120 @@ export default function squint(pi: ExtensionAPI) {
 		}
 	});
 
-	// Own this key so core's global toggle (which expands every tool row and section) never fires.
-	pi.registerShortcut(EXPAND_KEY, {
-		description: "Expand the latest tool output",
-		handler: () => toggle(latestId),
-	});
+	// Own the configured key so core's global toggle (which expands every tool row and section)
+	// never fires. The built-in app.tools.expand binding is released in keybindings.json.
+	if (direction !== OFF) {
+		pi.registerShortcut(key as KeyId, {
+			description: "Expand the latest tool output",
+			handler: () => toggle(latestId),
+		});
+	}
+
+	/** Everything the picker and completion offer: the five directions, plus off and custom. */
+	type Choice = { id: Mode; label: string; blurb: string } | { id: "custom"; label: string; blurb: string };
+	const CHOICES: ReadonlyArray<Choice> = [
+		{ id: OFF, label: "Default pi TUI", blurb: "squint off; pi draws tool calls itself" },
+		...DIRECTIONS,
+		{ id: "custom", label: "Custom…", blurb: "describe a layout; pi builds it with a local preview" },
+	];
+
+	/** Save the instructions and set pi to work on the direction they describe. */
+	const startCustom = (instructions: string, ctx: ExtensionCommandContext): void => {
+		settings.custom = { instructions };
+		saveSettings(settings);
+		const message = customPrompt(instructions);
+		if (ctx.isIdle()) pi.sendUserMessage(message);
+		else pi.sendUserMessage(message, { deliverAs: "followUp" });
+		ctx.ui.notify("squint: instructions saved — building a preview…", "info");
+	};
+
+	/** Open the instructions editor (prefilled with the last ones) and start the build. */
+	const promptCustom = async (ctx: ExtensionCommandContext): Promise<void> => {
+		const typed = await ctx.ui.editor("Describe how tool calls should render", settings.custom?.instructions ?? "");
+		if (!typed?.trim()) return;
+		startCustom(typed.trim(), ctx);
+	};
 
 	pi.registerCommand("squint", {
-		description: `How tool calls render — ${DIRECTIONS.map((d) => d.id).join(", ")} (default ${DEFAULT_DIRECTION})`,
+		description: `How tool calls render — ${CHOICES.map((c) => c.id).join(", ")}; or "key <binding>"`,
 		getArgumentCompletions: (prefix: string) => {
 			const typed = prefix.trim().toLowerCase();
-			const matches = DIRECTIONS.filter((d) => d.id.startsWith(typed)).map((d) => ({ value: d.id, label: `${d.id} — ${d.blurb}` }));
+			const matches = CHOICES.filter((c) => c.id.startsWith(typed)).map((c) => ({ value: c.id, label: `${c.id} — ${c.blurb}` }));
+			if (matches.length === 0 && "key".startsWith(typed)) matches.push({ value: "key", label: "key <binding> — set the expand/collapse shortcut" });
 			return matches.length > 0 ? matches : null;
 		},
 		handler: async (args: string, ctx) => {
-			const wanted = args.trim().toLowerCase();
-			if (wanted) {
-				const hit = DIRECTIONS.find((d) => d.id === wanted);
-				if (!hit) {
-					ctx.ui.notify(`squint: unknown direction "${wanted}". Options: ${DIRECTIONS.map((d) => d.id).join(", ")}`, "warning");
+			const raw = args.trim();
+			const space = raw.indexOf(" ");
+			const head = (space === -1 ? raw : raw.slice(0, space)).toLowerCase();
+			const tail = space === -1 ? "" : raw.slice(space + 1).trim();
+
+			if (head === "key") {
+				if (!ctx.hasUI) {
+					ctx.ui.notify(`squint: collapse key ${key}`, "info");
 					return;
 				}
-				apply(hit.id);
+				const typed = tail || (await ctx.ui.input(`squint collapse key (now ${expandLabel})`, key));
+				if (!typed) return;
+				if (!setKey(typed)) {
+					ctx.ui.notify(`squint: "${typed}" is not a key (try super+e, ctrl+o, ctrl+shift+x)`, "warning");
+					return;
+				}
+				// The shortcut is fixed when the extension loads, so a new binding needs a reload.
+				await ctx.reload();
+				return;
+			}
+
+			if (head === "custom") {
+				if (!ctx.hasUI) {
+					ctx.ui.notify("squint: custom needs an interactive session", "warning");
+					return;
+				}
+				if (tail) startCustom(tail, ctx);
+				else await promptCustom(ctx);
+				return;
+			}
+
+			if (head) {
+				const hit = CHOICES.find((choice) => choice.id === head);
+				if (!hit) {
+					ctx.ui.notify(`squint: unknown mode "${head}". Options: ${CHOICES.map((c) => c.id).join(", ")}, key`, "warning");
+					return;
+				}
+				if (hit.id === "custom") return;
+				if (apply(hit.id)) {
+					await ctx.reload();
+					return;
+				}
 				ctx.ui.notify(`squint: ${hit.label} — ${hit.blurb}`, "info");
 				return;
 			}
+
 			if (!ctx.hasUI) {
 				ctx.ui.notify(`squint: ${direction}`, "info");
 				return;
 			}
 			// One pick then close, so the transcript is visible immediately behind the picker.
-			const choices = DIRECTIONS.map((d) => `${d.id === direction ? "●" : "○"} ${d.label} — ${d.blurb}`);
-			const picked = await ctx.ui.select(`squint — how tool calls render (now: ${direction})`, choices);
+			const choices = CHOICES.map((c) => `${c.id === direction ? "●" : "○"} ${c.label} — ${c.blurb}`);
+			const picked = await ctx.ui.select(`squint — how tool calls render (now: ${direction} · ${expandLabel})`, choices);
 			if (!picked) return;
-			const hit = DIRECTIONS[choices.indexOf(picked)];
-			if (hit) {
-				apply(hit.id);
-				ctx.ui.notify(`squint: ${hit.label}`, "info");
+			const hit = CHOICES[choices.indexOf(picked)];
+			if (!hit) return;
+			if (hit.id === "custom") {
+				await promptCustom(ctx);
+				return;
 			}
+			if (apply(hit.id)) {
+				await ctx.reload();
+				return;
+			}
+			ctx.ui.notify(`squint: ${hit.label}`, "info");
 		},
 	});
 
-	pi.registerToolRenderer((toolName): ToolRenderers => {
+	pi.registerToolRenderer((toolName, next): ToolRenderers | undefined => {
+		// "off" hands the call back to whatever renderer would have won without squint.
+		if (direction === OFF) return next();
 		const info = classify(toolName);
 
 

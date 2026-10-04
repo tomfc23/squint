@@ -2,9 +2,10 @@
 
 Compact transcript rendering for [pi](https://pi.dev), in five interchangeable directions.
 
-Every tool call becomes one row — a header plus a short preview, with the full output on click or
-`⌘E`. The *direction* decides how that row is drawn. Five of them ship; switch any time with
-`/squint`, and the choice is remembered.
+Every tool call becomes one row — a header plus a short preview, with the full output on click or the
+configured shortcut (`⌘E` by default). The *direction* decides how that row is drawn. Five ship, plus
+`off` to hand tool calls back to pi and `custom` to describe your own; switch any time with `/squint`,
+and the choice is remembered.
 
 ```
 ● READ    extensions/squint/directions.ts                          42 lines · 0.3s     ← rail (default)
@@ -75,25 +76,29 @@ Either way, `/reload` in a running session picks it up.
 ## Use
 
 ```
-/squint              pick a direction (rail, ledger, badge, gutter, deck)
+/squint              pick a render mode (rail, ledger, badge, gutter, deck, off, custom)
 /squint ledger       set one directly
+/squint off          hand tool calls back to pi's own rendering
+/squint custom       describe a direction; pi builds it with a local preview first
+/squint key ctrl+o   set the expand/collapse shortcut (saved, then reloaded)
 ```
 
-The picker lists every direction with the current one marked and closes after one choice, so the
-transcript is visible behind it. The choice is saved to `<agent-dir>/squint.json` — `~/.pi/agent/`
-by default, or `$PI_CODING_AGENT_DIR` when set:
+The picker lists every mode with the current one marked and closes after one choice, so the transcript
+is visible behind it. The choice is saved to `<agent-dir>/squint.json` — `~/.pi/agent/` by default, or
+`$PI_CODING_AGENT_DIR` when set, alongside the shortcut:
 
 ```json
-{ "direction": "rail" }
+{ "direction": "rail", "key": "super+e" }
 ```
 
-With no settings file, the direction is `rail`.
+With no settings file, the direction is `rail` and the shortcut is `⌘E`.
 
 Keys and gestures:
 
 - **click any row** to expand or collapse it
-- **`⌘E`** expands the newest row (the built-in `app.tools.expand` binding is released for this;
-  add `"app.tools.expand": []` to `keybindings.json` if you have it bound elsewhere)
+- **`⌘E`** expands the newest row; rebind it with `/squint key <binding>` (e.g. `ctrl+o`,
+  `ctrl+shift+x`). The built-in `app.tools.expand` binding is released for this — add
+  `"app.tools.expand": []` to `keybindings.json` if you have it bound elsewhere
 - thinking blocks are relabelled `THINK · click to expand` and start collapsed
 
 Behaviour worth knowing:
@@ -107,7 +112,9 @@ Behaviour worth knowing:
 
 ## Adding a direction
 
-A direction is a pure layout plus one line of registration.
+A direction is a pure layout plus one line of registration. `/squint custom` walks pi through this for
+you — it collects your instructions, shows a locally served preview to confirm, implements the
+direction, runs the tests, deletes the preview, and reports the optimization it made.
 
 1. Add the id to `Direction` and `DIRECTIONS` in `directions.ts`. The first entry is the default.
 2. Write its renderer in that file: `(row: Row, cols: number, open: boolean, opts) => Seg[][]`.
