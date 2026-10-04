@@ -113,8 +113,9 @@ Behaviour worth knowing:
 ## Adding a direction
 
 A direction is a pure layout plus one line of registration. `/squint custom` walks pi through this for
-you — it collects your instructions, shows a locally served preview to confirm, implements the
-direction, runs the tests, deletes the preview, and reports the optimization it made.
+you — it collects your instructions, shows a locally served HTML simulation (modeled on the
+squint-tui preview page) to confirm, implements the direction, runs the tests, deletes the
+simulation, and reports the optimization it made.
 
 1. Add the id to `Direction` and `DIRECTIONS` in `directions.ts`. The first entry is the default.
 2. Write its renderer in that file: `(row: Row, cols: number, open: boolean, opts) => Seg[][]`.
