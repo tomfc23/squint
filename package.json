@@ -1,0 +1,34 @@
+{
+  "name": "pi-squint",
+  "version": "0.1.0",
+  "description": "Compact transcript rendering for pi, in five interchangeable directions",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "tui",
+    "transcript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomfc23/squint.git"
+  },
+  "homepage": "https://github.com/tomfc23/squint",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node logic.test.ts && node directions.test.ts"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "engines": {
+    "node": ">=22.6"
+  }
+}
