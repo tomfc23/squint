@@ -11,9 +11,6 @@ import { classify } from "./logic.ts";
 
 const WIDTHS = [24, 40, 61, 80, 120, 200];
 
-/** Directions whose collapsed row is the head alone; they withhold everything else. */
-const HEAD_ONLY = new Set<Direction>(["ledger", "timeline"]);
-
 const normal: Row = {
 	label: "READ", tone: "blue", summary: "extensions/squint/directions.ts", count: "42 lines", time: "0.3s", state: "ok",
 	preview: [" 39#BRBH:const COLLAPSED: Record<Kind, number> = {", " 40#RPNH:\tread: 6,"],
@@ -236,16 +233,16 @@ for (const { id } of DIRECTIONS) {
 	const closed = draw(id, false, 80);
 	checkLines(id, closed, 80);
 	for (const line of closed) assert.ok(!/[\r\n\t]/.test(line), `${id}: a control character reached the terminal`);
-	// Ledger and timeline show nothing but the head while collapsed.
+	// Ledger is the one direction whose collapsed row is nothing but the head line.
 	assert.equal(closed.length >= 1, true, `${id}: a collapsed row draws its head`);
-	if (!HEAD_ONLY.has(id)) assert.ok(closed.length > 1, `${id}: a collapsed row also shows its preview`);
+	if (id !== "ledger") assert.ok(closed.length > 1, `${id}: a collapsed row also shows its preview`);
 	assert.ok(closed[0].length <= 80, `${id}: the head is one line`);
 
 	const opened = draw(id, true, 80);
 	checkLines(id, opened, 80);
 	const joinedOpen = opened.join("\n");
 	assert.ok(joinedOpen.includes("line 1"), `${id}: opening reveals the output from the top`);
-	if (!HEAD_ONLY.has(id)) {
+	if (id !== "ledger") {
 		assert.ok(closed.join("\n").includes("line 12"), `${id}: a collapsed shell row shows the tail`);
 		assert.ok(closed.join("\n").includes("earlier lines"), `${id}: and names the lines it withholds`);
 		assert.ok(!joinedOpen.includes("earlier lines"), `${id}: an open row does not still claim to withhold them`);
