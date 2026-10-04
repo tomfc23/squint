@@ -1,5 +1,5 @@
 /**
- * squint — the five render directions.
+ * squint — the six render directions.
  *
  * Pure layout. Every function takes plain data and returns styled segments, so the
  * column maths is testable with plain node (see directions.test.ts) and the renderer
@@ -10,7 +10,7 @@
  */
 import { diffLineKind, diffStats, previewLines, summarizeArgs, tailLines, toLines, type Classification, type Kind, type Tone } from "./logic.ts";
 
-export type Direction = "badge" | "ledger" | "gutter" | "deck" | "rail";
+export type Direction = "badge" | "ledger" | "gutter" | "deck" | "rail" | "timeline";
 
 /** Order is the picker order; the first entry is the default. */
 export const DIRECTIONS: ReadonlyArray<{ id: Direction; label: string; blurb: string }> = [
@@ -19,6 +19,7 @@ export const DIRECTIONS: ReadonlyArray<{ id: Direction; label: string; blurb: st
 	{ id: "badge", label: "Badge", blurb: "the filled chip, as shipped before" },
 	{ id: "gutter", label: "Gutter", blurb: "a typographic column instead of a chip" },
 	{ id: "deck", label: "Deck", blurb: "each call boxed; nesting visible inside" },
+	{ id: "timeline", label: "Timeline", blurb: "a duration bar per call, git-log flavored; output on open" },
 ];
 
 export const DEFAULT_DIRECTION: Direction = "rail";
@@ -27,13 +28,14 @@ export function isDirection(value: unknown): value is Direction {
 	return DIRECTIONS.some((d) => d.id === value);
 }
 
-/** Collapsed preview lines per direction. Ledger shows none: that absence is its design. */
+/** Collapsed preview lines per direction. Ledger and timeline show none: that absence is their design. */
 const BADGE_LIMIT: Partial<Record<Kind, number>> = { read: 6, grep: 8, find: 8, ls: 8, edit: 10, write: 4, shell: 8, agent: 4, web: 4, todo: 6, ask: 6, code: 6, other: 6 };
 
 export function collapsedLimit(direction: Direction, kind: Kind): number {
 	const badgeLimit = BADGE_LIMIT[kind] ?? 6;
 	switch (direction) {
 		case "ledger":
+		case "timeline":
 			return 0;
 		case "badge":
 			return badgeLimit;
@@ -68,6 +70,8 @@ export interface Row {
 	/** Right-hand metadata for ledger/gutter/deck/rail. Empty hides its column. */
 	count: string;
 	time: string;
+	/** The raw duration the time column and the timeline bar are both derived from. */
+	ms?: number;
 	state: "ok" | "pending" | "error";
 	/** Lines visible while collapsed. */
 	preview: string[];
@@ -315,6 +319,7 @@ export function buildRow(direction: Direction, info: Classification, input: RowI
 
 		// A running row has no duration worth printing yet; the count column already says it is live.
 		time: input.pending || input.ms === undefined ? "" : formatDuration(input.ms),
+		ms: input.pending ? undefined : input.ms,
 		state: input.isError ? "error" : input.pending ? "pending" : "ok",
 		preview,
 		hidden,
@@ -525,6 +530,97 @@ function railChildren(row: Row, cols: number, opts: Required<LayoutOptions>): Se
 }
 
 /* ------------------------------------------------------------------ *
+ * 06 timeline — one bar per call, git-log flavored
+ * ------------------------------------------------------------------ */
+const T_BAR = 8;
+const T_MS_PER_CELL = 25;
+const T_LABEL = 6;
+/** Below this the argument stops being an argument; it is the point to shed a column. */
+const T_SUMMARY_MIN = 6;
+
+/** 25ms per cell, capped at the bar's eight cells. A running call has no duration yet. */
+function barCells(ms: number | undefined): number {
+	if (ms === undefined || !Number.isFinite(ms) || ms <= 0) return 0;
+	return Math.min(T_BAR, Math.ceil(ms / T_MS_PER_CELL));
+}
+
+function barSegs(row: Row): Seg[] {
+	const filled = row.state === "pending" ? 0 : barCells(row.ms);
+	const ink: Ink = row.state === "error" ? "error" : row.state === "pending" ? "dim" : row.tone;
+	const bar: Seg[] = [];
+	if (filled > 0) bar.push(seg("▇".repeat(filled), ink));
+	if (filled < T_BAR) bar.push(seg(spaces(T_BAR - filled)));
+	return bar;
+}
+
+/** A running call has no duration worth printing; the ellipsis is the honest stand-in. */
+function timelineMeta(row: Row): Seg[] {
+	if (row.state === "pending") return [seg("…", "dim")];
+	const parts: Seg[] = [];
+	if (row.time) parts.push(seg(row.time, "dim"));
+	if (row.diff) {
+		if (parts.length > 0) parts.push(seg("  ", "dim"));
+		parts.push(seg(`+${row.diff.added}`, "add"), seg(" ", "dim"), seg(`−${row.diff.removed}`, "del"));
+	}
+	return parts;
+}
+
+/**
+ * The bar is a fixed eight-cell column, so labels line up down the transcript; the glyph states the
+ * call, the label is six cells and the argument takes the rest. When the width runs out the bar goes
+ * first, then the metadata: a bar with no room for the argument it belongs to is worse than no bar.
+ */
+function timelineHead(row: Row, cols: number, indent: number): Seg[] {
+	const glyph = row.state === "pending" ? "○" : row.state === "error" ? "✖" : "●";
+	const glyphInk: Ink = row.state === "error" ? "error" : row.state === "pending" ? "dim" : row.tone;
+	const right = timelineMeta(row);
+	const rightW = segsWidth(right);
+	const metaW = rightW > 0 ? rightW + 1 : 0;
+	// Width without the bar's nine cells: indent + glyph + gap + label + gap.
+	const bare = indent + 1 + 1 + T_LABEL + 2;
+	const withBar = cols - bare - (T_BAR + 1) - metaW >= T_SUMMARY_MIN;
+	// The bar goes first, then the metadata: the wider form wins only if the long one had no room.
+	const withRight = withBar || cols - bare - metaW >= T_SUMMARY_MIN;
+	const core: Seg[] = [
+		seg(glyph, glyphInk),
+		seg(" "),
+		seg(padEnd(clipW(row.label, T_LABEL), T_LABEL), row.tone, undefined, true),
+		seg("  "),
+		seg(row.summary || "—", "text"),
+	];
+	const left = withBar ? [seg(spaces(indent)), ...barSegs(row), seg(" "), ...core] : [seg(spaces(indent)), ...core];
+	return withRight && rightW > 0 ? fit(left, right, cols) : clipSegs(left, cols);
+}
+
+/** One call, its body when open, and its children as the same row two cells deeper. */
+function timelineLines(row: Row, cols: number, open: boolean, opts: Required<LayoutOptions>, depth: number): Seg[][] {
+	const indent = depth * 2;
+	// The body hangs two cells in, under the bar it belongs to.
+	const bodyIndent = indent + 2;
+	const out: Seg[][] = [timelineHead(row, cols, indent)];
+
+	// Collapsed shows the head and nothing else — except the one line that names what is withheld.
+	if (!open && row.tail && row.hiddenCount > 0) {
+		out.push([seg(`${spaces(bodyIndent)}${clipW(`… ${row.hiddenCount} ${row.hiddenLabel}`, cols - bodyIndent)}`, "dim")]);
+	}
+	if (open) {
+		const maxLine = Math.max(1, cols - bodyIndent);
+		for (const line of bodyLines(row, open, opts, maxLine)) out.push([seg(spaces(bodyIndent)), ...line]);
+		for (const kid of row.nested ?? []) out.push(...timelineLines(kid, cols, true, opts, depth + 1));
+	}
+	// Only the outermost row owns the affordance: a nested call is not clickable on its own.
+	if (depth === 0) {
+		const hint = hintSegs(row, open, opts.keyHint);
+		if (hint) out.push([seg(spaces(bodyIndent)), ...clipSegs(hint, Math.max(1, cols - bodyIndent))]);
+	}
+	return out;
+}
+
+function timeline(row: Row, cols: number, open: boolean, opts: Required<LayoutOptions>): Seg[][] {
+	return timelineLines(row, cols, open, opts, 0);
+}
+
+/* ------------------------------------------------------------------ *
  * shared body + nesting
  * ------------------------------------------------------------------ */
 function bodyLines(row: Row, open: boolean, opts: Required<LayoutOptions>, maxLine: number): Seg[][] {
@@ -607,6 +703,8 @@ export function layout(direction: Direction, row: Row, cols: number, open: boole
 			return deckLines(clean, w, open, opts);
 		case "rail":
 			return rail(clean, w, open, opts);
+		case "timeline":
+			return timeline(clean, w, open, opts);
 		default:
 			return badge(clean, w, open, opts);
 	}

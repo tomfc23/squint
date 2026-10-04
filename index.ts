@@ -115,7 +115,7 @@ function customPrompt(instructions: string): string {
 		"   diff, a shell tail, an error, a pending call, and nested calls.",
 		"2. Build a browser simulation of the candidate: one self-contained HTML page (inline CSS and",
 		"   JS) modeled on the squint-tui preview page (`index.html`) — pi's dark theme tokens, the real",
-		"   transcript vocabulary, and the same cases — with the candidate beside `rail`. Write it to a",
+		"   transcript vocabulary, and the same cases. Write it to a",
 		"   fresh temp dir under os.tmpdir(), serve it locally (`python3 -m http.server 0 --directory",
 		"   <dir>`), and print the URL. Let me open it.",
 		"3. Ask me to confirm the preview and stop there. If I ask for changes, revise the preview and",
