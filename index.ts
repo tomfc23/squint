@@ -39,6 +39,7 @@ import {
 } from "./directions.ts";
 import { classify, keyLabel, normalizeKeyId, textOf, TONE_HEX, type Classification, type Tone } from "./logic.ts";
 import { ensureShim } from "./shim.ts";
+import { completions, menuEntries, resolveArg } from "./menu.ts";
 import {
 	CODE_STYLES,
 	DEFAULT_CODE_STYLE,
@@ -550,105 +551,128 @@ export default function squint(pi: ExtensionAPI) {
 		startCustom(typed.trim(), ctx);
 	};
 
+	/** How tool calls render: the picker squint has always had. */
+	const pickToolCalls = async (ctx: ExtensionCommandContext): Promise<void> => {
+		if (!ctx.hasUI) {
+			ctx.ui.notify(`squint: tool calls ${direction}`, "info");
+			return;
+		}
+		// One pick then close, so the transcript is visible immediately behind the picker.
+		const choices = CHOICES.map((c) => `${c.id === direction ? "●" : "○"} ${c.label} — ${c.blurb}`);
+		const picked = await ctx.ui.select(`squint — how tool calls render (now: ${direction} · ${expandLabel})`, choices);
+		if (!picked) return;
+		const hit = CHOICES[choices.indexOf(picked)];
+		if (!hit) return;
+		if (hit.id === "custom") {
+			await promptCustom(ctx);
+			return;
+		}
+		if (apply(hit.id)) {
+			await ctx.reload();
+			return;
+		}
+		ctx.ui.notify(`squint: ${hit.label}`, "info");
+	};
+
+	/** How fenced code blocks render. */
+	const pickCodeBlocks = async (ctx: ExtensionCommandContext): Promise<void> => {
+		if (!ctx.hasUI) {
+			ctx.ui.notify(`squint: code blocks ${codeBlock}`, "info");
+			return;
+		}
+		const options = CODE_STYLES.map((style) => `${style.id === codeBlock ? "●" : "○"} ${style.label} — ${style.blurb}`);
+		const picked = await ctx.ui.select(`squint — how code blocks render (now: ${codeBlock})`, options);
+		if (!picked) return;
+		const hit = CODE_STYLES[options.indexOf(picked)];
+		if (!hit) return;
+		await setCodeBlock(hit.id, ctx);
+	};
+
+	/** The entry point: squint draws two things, so ask which one first. */
+	const openMenu = async (ctx: ExtensionCommandContext): Promise<void> => {
+		if (!ctx.hasUI) {
+			ctx.ui.notify(`squint: tool calls ${direction} · code blocks ${codeBlock}`, "info");
+			return;
+		}
+		const entries = menuEntries({ direction, codeBlock });
+		const texts = entries.map((entry) => entry.text);
+		const picked = await ctx.ui.select("squint — what should it draw?", texts);
+		if (!picked) return;
+		const entry = entries[texts.indexOf(picked)];
+		if (!entry) return;
+		if (entry.id === "tools") await pickToolCalls(ctx);
+		else await pickCodeBlocks(ctx);
+	};
+
 	pi.registerCommand("squint", {
-		description: `How tool calls render — ${CHOICES.map((c) => c.id).join(", ")}; "code <style>" for code blocks; or "key <binding>"`,
-		getArgumentCompletions: (prefix: string) => {
-			const typed = prefix.trim().toLowerCase();
-			const matches = CHOICES.filter((c) => c.id.startsWith(typed)).map((c) => ({ value: c.id, label: `${c.id} — ${c.blurb}` }));
-			if (matches.length === 0 && "key".startsWith(typed)) matches.push({ value: "key", label: "key <binding> — set the expand/collapse shortcut" });
-			if (matches.length === 0 && "code".startsWith(typed)) matches.push({ value: "code", label: `code <style> — how code blocks render (${CODE_STYLES.map((s) => s.id).join(", ")})` });
-			return matches.length > 0 ? matches : null;
-		},
+		description: `squint — how it draws: "tui" for tool calls (${CHOICES.map((c) => c.id).join(", ")}), "code" for code blocks (${CODE_STYLES.map((s) => s.id).join(", ")}); or a name, or "key <binding>"`,
+		getArgumentCompletions: (prefix: string) => completions(prefix) ?? null,
 		handler: async (args: string, ctx) => {
-			const raw = args.trim();
-			const space = raw.indexOf(" ");
-			const head = (space === -1 ? raw : raw.slice(0, space)).toLowerCase();
-			const tail = space === -1 ? "" : raw.slice(space + 1).trim();
+			const choice = resolveArg(args);
 
-			if (head === "key") {
-				if (!ctx.hasUI) {
-					ctx.ui.notify(`squint: collapse key ${key}`, "info");
+			switch (choice.kind) {
+				case "menu":
+					await openMenu(ctx);
 					return;
-				}
-				const typed = tail || (await ctx.ui.input(`squint collapse key (now ${expandLabel})`, key));
-				if (!typed) return;
-				if (!setKey(typed)) {
-					ctx.ui.notify(`squint: "${typed}" is not a key (try super+e, ctrl+o, ctrl+shift+x)`, "warning");
+				case "tool-menu":
+					await pickToolCalls(ctx);
 					return;
-				}
-				// The shortcut is fixed when the extension loads, so a new binding needs a reload.
-				await ctx.reload();
-				return;
-			}
+				case "code-menu":
+					await pickCodeBlocks(ctx);
+					return;
 
-			if (head === "code") {
-				const named = tail ? CODE_STYLES.find((style) => style.id === tail) : undefined;
-				if (tail && !named) {
-					ctx.ui.notify(`squint: unknown code style "${tail}". Options: ${CODE_STYLES.map((s) => s.id).join(", ")}`, "warning");
+				case "code": {
+					const hit = CODE_STYLES.find((style) => style.id === choice.id);
+					if (!hit) return;
+					await setCodeBlock(hit.id, ctx);
 					return;
 				}
-				if (named) {
-					await setCodeBlock(named.id, ctx);
-					return;
-				}
-				if (!ctx.hasUI) {
-					ctx.ui.notify(`squint: code blocks ${codeBlock}`, "info");
-					return;
-				}
-				// One pick then close, like the directions picker.
-				const options = CODE_STYLES.map((style) => `${style.id === codeBlock ? "●" : "○"} ${style.label} — ${style.blurb}`);
-				const selection = await ctx.ui.select(`squint — how code blocks render (now: ${codeBlock})`, options);
-				if (!selection) return;
-				const picked = CODE_STYLES[options.indexOf(selection)];
-				if (!picked) return;
-				await setCodeBlock(picked.id, ctx);
-				return;
-			}
 
-			if (head === "custom") {
-				if (!ctx.hasUI) {
-					ctx.ui.notify("squint: custom needs an interactive session", "warning");
-					return;
-				}
-				if (tail) startCustom(tail, ctx);
-				else await promptCustom(ctx);
-				return;
-			}
-
-			if (head) {
-				const hit = CHOICES.find((choice) => choice.id === head);
-				if (!hit) {
-					ctx.ui.notify(`squint: unknown mode "${head}". Options: ${CHOICES.map((c) => c.id).join(", ")}, key`, "warning");
-					return;
-				}
-				if (hit.id === "custom") return;
-				if (apply(hit.id)) {
+				case "key": {
+					if (!ctx.hasUI) {
+						ctx.ui.notify(`squint: collapse key ${key}`, "info");
+						return;
+					}
+					const typed = choice.value ?? (await ctx.ui.input(`squint collapse key (now ${expandLabel})`, key));
+					if (!typed) return;
+					if (!setKey(typed)) {
+						ctx.ui.notify(`squint: "${typed}" is not a key (try super+e, ctrl+o, ctrl+shift+x)`, "warning");
+						return;
+					}
+					// The shortcut is fixed when the extension loads, so a new binding needs a reload.
 					await ctx.reload();
 					return;
 				}
-				ctx.ui.notify(`squint: ${hit.label} — ${hit.blurb}`, "info");
-				return;
-			}
 
-			if (!ctx.hasUI) {
-				ctx.ui.notify(`squint: ${direction}`, "info");
-				return;
+				case "custom": {
+					if (!ctx.hasUI) {
+						ctx.ui.notify("squint: custom needs an interactive session", "warning");
+						return;
+					}
+					if (choice.instructions) startCustom(choice.instructions, ctx);
+					else await promptCustom(ctx);
+					return;
+				}
+
+				case "tool": {
+					const hit = CHOICES.find((c) => c.id === choice.id);
+					if (!hit) return;
+					if (hit.id === "custom") return;
+					if (apply(hit.id)) {
+						await ctx.reload();
+						return;
+					}
+					ctx.ui.notify(`squint: ${hit.label} — ${hit.blurb}`, "info");
+					return;
+				}
+
+				case "unknown":
+					ctx.ui.notify(
+						`squint: unknown mode "${choice.value}". Try /squint for the menu, or: ${completions("")?.map((c) => c.value).join(", ")}`,
+						"warning",
+					);
+					return;
 			}
-			// One pick then close, so the transcript is visible immediately behind the picker.
-			const choices = CHOICES.map((c) => `${c.id === direction ? "●" : "○"} ${c.label} — ${c.blurb}`);
-			const picked = await ctx.ui.select(`squint — how tool calls render (now: ${direction} · ${expandLabel})`, choices);
-			if (!picked) return;
-			const hit = CHOICES[choices.indexOf(picked)];
-			if (!hit) return;
-			if (hit.id === "custom") {
-				await promptCustom(ctx);
-				return;
-			}
-			if (apply(hit.id)) {
-				await ctx.reload();
-				return;
-			}
-			ctx.ui.notify(`squint: ${hit.label}`, "info");
 		},
 	});
 
