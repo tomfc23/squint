@@ -51,12 +51,12 @@ try {
 	handlers.get("session_start")({ reason: "resume" }, ctx);
 	assert.deepEqual(draw(), restored, "resuming does not duplicate branches");
 
-	// Live child results still use the normal collapsed limit; expanding remains reversible.
+	// Live child results show one line while the parent is collapsed; expanding remains reversible.
 	handlers.get("tool_execution_end")({ toolCallId: `${parent}/1`, parentToolCallId: parent, isError: false,
 		result: { content: [{ type: "text", text: Array.from({ length: 500 }, (_, i) => `nested-line-${i}`).join("\n") }] } });
 	const closed = draw();
 	const outputCount = () => draw().filter((line) => /nested-line-\d+/.test(line)).length;
-	assert.equal(outputCount(), 4);
+	assert.equal(outputCount(), 1);
 	await shortcut();
 	assert.equal(outputCount(), 400);
 	await shortcut();

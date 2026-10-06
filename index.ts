@@ -388,6 +388,7 @@ export default function squint(pi: ExtensionAPI) {
 			pending: child.ms === undefined,
 			ms: child.ms ?? Date.now() - child.startedAt,
 			open,
+			isNested: true,
 			nested: nestedRows(child.id, depth + 1, open),
 		});
 	}

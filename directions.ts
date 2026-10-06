@@ -230,6 +230,13 @@ function fit(left: Seg[], right: Seg[], cols: number, fill = " "): Seg[] {
  * ------------------------------------------------------------------ */
 const MAX_LINE = 200;
 const EXPANDED_LIMIT = 400;
+/**
+ * A nested child — a tool a codemode script or subagent ran — gets one preview line while its
+ * transcript parent is collapsed: the parent row already owns the space, and a read or grep
+ * child would otherwise paste its content into it. Opening the parent lifts the child to
+ * EXPANDED_LIMIT.
+ */
+const NESTED_LIMIT = 1;
 
 function formatDuration(ms: number): string {
 	if (!Number.isFinite(ms) || ms < 0) return "";
@@ -264,6 +271,8 @@ export interface RowInput {
 	ms?: number;
 	/** Whether the row is expanded. Decides the slice, so the hint can stay honest in both states. */
 	open: boolean;
+	/** This row is a nested child: collapsed, it shows NESTED_LIMIT lines, not the kind's slice. */
+	isNested?: boolean;
 	nested?: Row[];
 }
 
@@ -274,7 +283,7 @@ export interface RowInput {
  */
 export function buildRow(direction: Direction, info: Classification, input: RowInput): Row {
 	const list = toLines(input.text);
-	const limit = input.open ? EXPANDED_LIMIT : collapsedLimit(direction, info.kind);
+	const limit = input.open ? EXPANDED_LIMIT : input.isNested ? NESTED_LIMIT : collapsedLimit(direction, info.kind);
 	const model = input.diff ? diffModel(input.diff) : undefined;
 
 	let preview: string[] = [];
