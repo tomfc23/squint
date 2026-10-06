@@ -374,21 +374,21 @@ export default function squint(pi: ExtensionAPI) {
 	/** The direction to lay out with; "off" never reaches a squint component, but be safe. */
 	const activeDirection = (): Direction => (direction === OFF ? DEFAULT_DIRECTION : direction);
 
-	function nestedRows(parentId: string, depth: number): Row[] {
+	function nestedRows(parentId: string, depth: number, open: boolean): Row[] {
 		if (depth >= 2) return [];
-		return (children.get(parentId) ?? []).map((child) => childRow(child, depth));
+		return (children.get(parentId) ?? []).map((child) => childRow(child, depth, open));
 	}
 
-	function childRow(child: Child, depth: number): Row {
-		// A child row is always drawn open: it only exists once its parent is being shown expanded.
+	function childRow(child: Child, depth: number, open: boolean): Row {
+		// Nested output follows its transcript parent's expansion state and preview limits.
 		return buildRow(activeDirection(), classify(child.toolName), {
 			args: child.args,
 			text: child.text,
 			isError: child.isError,
 			pending: child.ms === undefined,
 			ms: child.ms ?? Date.now() - child.startedAt,
-			open: true,
-			nested: nestedRows(child.id, depth + 1),
+			open,
+			nested: nestedRows(child.id, depth + 1, open),
 		});
 	}
 
@@ -406,7 +406,7 @@ export default function squint(pi: ExtensionAPI) {
 			// finished — which keeps Date.now() out of the render path entirely.
 			ms: current?.pending ? undefined : (finished ?? (start === undefined ? undefined : Date.now() - start)),
 			open: isOpen(id),
-			nested: nestedRows(id, 0),
+			nested: nestedRows(id, 0, isOpen(id)),
 		});
 	}
 
@@ -457,6 +457,32 @@ export default function squint(pi: ExtensionAPI) {
 	// Thinking blocks are core-rendered, so this extension only relabels the collapsed line;
 	// settings.json sets hideThinkingBlock so they start minimized like a tool row.
 	pi.on("session_start", (_event, ctx) => {
+		// Execution events are not replayed on reload/resume. Restore the saved headers,
+		// not result bodies: pi deliberately persists nested metadata without output.
+		children.clear();
+		childById.clear();
+		rendered.clear();
+		for (const entry of ctx.sessionManager.getBranch()) {
+			if (entry.type !== "message" || entry.message.role !== "toolResult") continue;
+			const message = entry.message;
+			latestId = message.toolCallId;
+			for (const call of message.nestedCalls?.calls ?? []) {
+				const child: Child = {
+					id: call.id,
+					toolName: call.name,
+					args: call.arguments,
+					text: call.error ?? "",
+					isError: call.status === "error",
+					startedAt: message.timestamp,
+					ms: call.durationMs ?? 0,
+				};
+				const parent = call.id.slice(0, call.id.lastIndexOf("/"));
+				const list = children.get(parent) ?? [];
+				list.push(child);
+				children.set(parent, list);
+				childById.set(child.id, child);
+			}
+		}
 		if (direction !== OFF) ctx.ui.setHiddenThinkingLabel("THINK · click to expand");
 		// A pi update ships the stock renderer again, so the shim is put back on every start.
 		if (patchedNow() && codeBlock !== "off") {

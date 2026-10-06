@@ -268,4 +268,42 @@ for (const { id } of DIRECTIONS) {
 	}
 }
 
+/* ---- nested calls follow the parent's expansion state -------------- */
+for (const { id } of DIRECTIONS) {
+	// Even a pre-sliced child must not leak its hidden remainder or diff context.
+	for (const kid of [normal, edit, err]) {
+		const parent = { ...empty, label: "CODE", nested: [kid] };
+		const closed = layout(id, parent, 100, false).flat().map((s) => s.t).join("\n");
+		const opened = layout(id, parent, 100, true).flat().map((s) => s.t).join("\n");
+		const withheld = kid.diff ? "const COLLAPSED = {" : kid.hidden[0].trim().replace(/\t/g, "  ");
+		assert.ok(!closed.includes(withheld), `${id}: nested hidden output stays collapsed`);
+		assert.ok(opened.includes(withheld), `${id}: opening reveals nested output`);
+		assert.ok(/expand|▸/.test(closed), `${id}: nested-only output has an expansion affordance`);
+	}
+
+	for (const tool of ["read", "grep", "bash"]) {
+		for (const isError of [false, true]) {
+			for (const pending of [false, true]) {
+				const drawNested = (open: boolean) => {
+					const kid = buildRow(id, classify(tool), {
+						args: { path: "large.md", command: "cat large.md" },
+						text: Array.from({ length: 500 }, (_, i) => `output-${i}`).join("\n"),
+						isError, pending, open,
+					});
+					return layout(id, { ...empty, label: "CODE", nested: [kid] }, 100, open)
+						.map((l) => l.map((s) => s.t).join(""));
+				};
+				const closed = drawNested(false);
+				const opened = drawNested(true);
+				checkLines(`${id}/${tool}/nested/closed`, closed, 100);
+				checkLines(`${id}/${tool}/nested/open`, opened, 100);
+				const outputCount = (lines: string[]) => lines.filter((line) => /output-\d+/.test(line)).length;
+				assert.equal(outputCount(closed), collapsedLimit(id, classify(tool).kind), `${id}/${tool}: nested preview uses the normal limit`);
+				assert.equal(outputCount(opened), 400, `${id}/${tool}: nested expansion retains the existing cap`);
+				assert.ok(opened.length > closed.length, `${id}/${tool}: expansion adds output`);
+			}
+		}
+	}
+}
+
 console.log("squint directions: ok");

@@ -340,12 +340,12 @@ function revealable(row: Row): boolean {
 
 /** Ledger shows no preview while collapsed, so any content at all earns a chevron. */
 function toggleable(row: Row): boolean {
-	return row.preview.length > 0 || revealable(row);
+	return row.preview.length > 0 || revealable(row) || (row.nested?.some(toggleable) ?? false);
 }
 
 /** Mirrors the extension: a shell tail row carries no count, and a row with nothing behind it has no affordance. */
 function hintSegs(row: Row, open: boolean, keyHint: (action: string) => string): Seg[] | undefined {
-	if (!revealable(row)) return undefined;
+	if (!revealable(row) && (open || !row.nested?.some(toggleable))) return undefined;
 	const more = !row.tail && row.hiddenCount > 0 ? `+${row.hiddenCount} ${row.hiddenLabel} · ` : "";
 	return [seg(more + keyHint(open ? "to collapse" : "to expand"), "dim")];
 }
@@ -390,7 +390,7 @@ function badge(row: Row, cols: number, open: boolean, opts: Required<LayoutOptio
 		if (open) for (const line of clipped(row.hidden, cols - ind - 1)) out.push([seg(spaces(ind) + line, "muted")]);
 	}
 
-	out.push(...nestedBlock(row, cols, opts, 2));
+	out.push(...nestedBlock(row, cols, open, opts, 2));
 	const hint = hintSegs(row, open, opts.keyHint);
 	if (hint && !row.diff) out.push([seg(spaces(ind)), ...clipSegs(hint, cols - ind)]);
 	return out;
@@ -420,7 +420,10 @@ function ledger(row: Row, cols: number, open: boolean, opts: Required<LayoutOpti
 		seg(toggleable(row) ? (open ? "▾" : "▸") : " ", "dim"),
 	];
 	const out: Seg[][] = [fit(head, right, cols)];
-	if (open) for (const line of bodyLines(row, open, opts, cols - 4)) out.push([seg("  │ ", "dim"), ...line]);
+	if (open) {
+		for (const line of bodyLines(row, open, opts, cols - 4)) out.push([seg("  │ ", "dim"), ...line]);
+		out.push(...nestedBlock(row, cols - 4, open, opts, 2).map((line) => [seg("  │ ", "dim"), ...line]));
+	}
 	return out;
 }
 
@@ -441,7 +444,7 @@ function gutter(row: Row, cols: number, open: boolean, opts: Required<LayoutOpti
 	];
 	const out: Seg[][] = [meta && metaRoom ? fit(head, [seg(clipW(meta, metaRoom), row.state === "error" ? "error" : "dim")], cols) : clipSegs(head, cols)];
 	for (const line of bodyLines(row, open, opts, cols - GUTTER_RULE - 2)) out.push([seg(`${spaces(GUTTER_RULE)}│ `, "dim"), ...line]);
-	out.push(...nestedBlock(row, cols - GUTTER_RULE - 2, opts, 2).map((line) => [seg(`${spaces(GUTTER_RULE)}│ `, "dim"), ...line]));
+	out.push(...nestedBlock(row, cols - GUTTER_RULE - 2, open, opts, 2).map((line) => [seg(`${spaces(GUTTER_RULE)}│ `, "dim"), ...line]));
 	const hint = hintSegs(row, open, opts.keyHint);
 	if (hint) out.push([seg(`${spaces(GUTTER_RULE)}│ `, "dim"), ...clipSegs(hint, cols - GUTTER_RULE - 2)]);
 	return out;
@@ -472,7 +475,7 @@ function deckLines(row: Row, cols: number, open: boolean, opts: Required<LayoutO
 		const fill = line.find((s) => s.fill)?.fill;
 		out.push([seg("│", "dim"), seg(padEnd(` ${clipW(line.map((s) => s.t).join(""), inner - 2)}`, inner), ink, fill), seg("│", "dim")]);
 	}
-	for (const line of nestedBlock(row, cols - 4, opts, 0)) {
+	for (const line of nestedBlock(row, cols - 4, open, opts, 0)) {
 		const gap = Math.max(0, cols - 4 - segsWidth(line));
 		out.push([seg("│ ", "dim"), ...line, seg(" ".repeat(gap)), seg(" │", "dim")]);
 	}
@@ -499,13 +502,13 @@ function rail(row: Row, cols: number, open: boolean, opts: Required<LayoutOption
 	const metaRoom = Math.max(0, Math.min(22, cols - 14));
 	const out: Seg[][] = [meta && metaRoom ? fit(head, [seg(clipW(meta, metaRoom), "dim")], cols) : clipSegs(head, cols)];
 	for (const line of bodyLines(row, open, opts, cols - 3)) out.push([seg("│ ", "dim"), ...line]);
-	out.push(...railChildren(row, cols, opts));
+	out.push(...railChildren(row, cols, open, opts));
 	const hint = hintSegs(row, open, opts.keyHint);
 	if (hint) out.push([seg("│ ", "dim"), ...clipSegs(hint, cols - 2)]);
 	return out;
 }
 
-function railChildren(row: Row, cols: number, opts: Required<LayoutOptions>): Seg[][] {
+function railChildren(row: Row, cols: number, open: boolean, opts: Required<LayoutOptions>): Seg[][] {
 	const kids = row.nested ?? [];
 	const out: Seg[][] = [];
 	kids.forEach((kid, i) => {
@@ -519,7 +522,7 @@ function railChildren(row: Row, cols: number, opts: Required<LayoutOptions>): Se
 			seg(kid.summary || "—", "text"),
 		];
 		out.push(clipSegs(head, cols));
-		for (const line of bodyLines(kid, true, opts, cols - 6)) out.push([seg(last ? "│   " : "│ │ ", "dim"), ...line]);
+		for (const line of bodyLines(kid, open, opts, cols - 6)) out.push([seg(last ? "│   " : "│ │ ", "dim"), ...line]);
 	});
 	return out;
 }
@@ -546,13 +549,13 @@ function bodyLines(row: Row, open: boolean, opts: Required<LayoutOptions>, maxLi
  * parent's own direction: a child should stay recognisable at the indent, and a chip is the
  * densest thing that still names the tool and its target.
  */
-function nestedBlock(row: Row, cols: number, opts: Required<LayoutOptions>, indent: number): Seg[][] {
+function nestedBlock(row: Row, cols: number, open: boolean, opts: Required<LayoutOptions>, indent: number): Seg[][] {
 	const kids = row.nested ?? [];
 	if (kids.length === 0) return [];
 	const childCols = Math.max(8, cols - indent);
 	// The outer clip is what keeps a deeply indented child inside the terminal even when the
 	// child's own layout had to fall back to its own minimum width.
-	return kids.flatMap((kid) => layout("badge", kid, childCols, true, opts).map((line) => clipSegs([seg(spaces(indent)), ...line], cols)));
+	return kids.flatMap((kid) => layout("badge", kid, childCols, open, opts).map((line) => clipSegs([seg(spaces(indent)), ...line], cols)));
 }
 
 /* ------------------------------------------------------------------ *
