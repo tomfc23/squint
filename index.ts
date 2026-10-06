@@ -38,6 +38,17 @@ import {
 	type Seg,
 } from "./directions.ts";
 import { classify, keyLabel, normalizeKeyId, textOf, TONE_HEX, type Classification, type Tone } from "./logic.ts";
+import { ensureShim } from "./shim.ts";
+import {
+	CODE_STYLES,
+	DEFAULT_CODE_STYLE,
+	isCodeStyle,
+	liveTheme,
+	renderCodeBlock,
+	type CodeArea,
+	type CodeBlockHook,
+	type CodeStyle,
+} from "./codeblocks.ts";
 
 const BADGE_FG = "#181a20";
 
@@ -65,6 +76,8 @@ interface Settings {
 	direction: Mode;
 	/** The expand/collapse shortcut, as a canonical pi key id. */
 	key: string;
+	/** How fenced code blocks render: a style, or "off" for pi's own fences (see codeblocks.ts). */
+	codeBlock: CodeStyle;
 	/** The instructions last handed to /squint custom, kept as the editor's prefill. */
 	custom?: { instructions: string };
 }
@@ -77,12 +90,13 @@ function loadSettings(): Settings {
 		return {
 			direction: isMode(saved.direction) ? saved.direction : DEFAULT_DIRECTION,
 			key: normalizeKeyId(saved.key) ?? DEFAULT_KEY,
+			codeBlock: isCodeStyle(saved.codeBlock) ? saved.codeBlock : DEFAULT_CODE_STYLE,
 			custom: typeof saved.custom?.instructions === "string" ? { instructions: saved.custom.instructions } : undefined,
 		};
 	} catch {
-		// No settings yet, or unreadable: rail and Cmd+E.
+		// No settings yet, or unreadable: rail, Cmd+E, spine.
 	}
-	return { direction: DEFAULT_DIRECTION, key: DEFAULT_KEY };
+	return { direction: DEFAULT_DIRECTION, key: DEFAULT_KEY, codeBlock: DEFAULT_CODE_STYLE };
 }
 
 function saveSettings(settings: Settings): void {
@@ -239,6 +253,24 @@ class SquintRow implements Component {
 export default function squint(pi: ExtensionAPI) {
 	const settings = loadSettings();
 	let direction: Mode = settings.direction;
+	let codeBlock: CodeStyle = settings.codeBlock;
+
+	/**
+	 * How pi's renderer asks squint to draw a fenced code block. The shim (shim.ts) calls this
+	 * global; the style is read per block, so switching it needs no reload, and a style that
+	 * throws falls back to pi's own fences instead of breaking the transcript.
+	 */
+	const codeHook: CodeBlockHook = (code, lang, width, area) => {
+		try {
+			if (codeBlock === "off") return undefined;
+			const theme = liveTheme();
+			if (!theme) return undefined;
+			return renderCodeBlock({ style: codeBlock, theme, area, ink: parseColor(BADGE_FG) }, code, lang, width);
+		} catch {
+			return undefined;
+		}
+	};
+	(globalThis as Record<string, unknown>)["__squintCodeBlock"] = codeHook;
 	let latestId: string | null = null;
 	/** Read once per load; a new binding only takes effect after /reload (or ctx.reload()). */
 	const key = settings.key;
@@ -281,6 +313,16 @@ export default function squint(pi: ExtensionAPI) {
 		return reload;
 	};
 
+	/** Install or repair the renderer shim; true when anything had to be written just now. */
+	const patchedNow = (): boolean => {
+		try {
+			return ensureShim().some((result) => result.action === "installed");
+		} catch {
+			// An unwritable install (a read-only home, a sandbox) must not break the session.
+			return false;
+		}
+	};
+
 	/** Store a binding; the shortcut is only re-read when the extension reloads. */
 	const setKey = (raw: string | undefined): boolean => {
 		const id = normalizeKeyId(raw);
@@ -288,6 +330,24 @@ export default function squint(pi: ExtensionAPI) {
 		settings.key = id;
 		saveSettings(settings);
 		return true;
+	};
+
+	/**
+	 * Switch the code block style. The shim is what makes a style visible at all, so it is
+	 * confirmed here: when it had to be installed, this session cannot draw the new style yet
+	 * and the user is told to restart instead of being left with a silent no-op.
+	 */
+	const setCodeBlock = async (next: CodeStyle, ctx: ExtensionCommandContext): Promise<void> => {
+		codeBlock = next;
+		settings.codeBlock = next;
+		saveSettings(settings);
+		if (patchedNow()) {
+			ctx.ui.notify(`squint: code blocks are set to "${next}", but the renderer shim was just installed — restart pi to see it`, "warning");
+			return;
+		}
+		// Same reload the tool directions use: it re-renders the transcript, which is
+		// already holding code blocks drawn by the previous style.
+		await ctx.reload();
 	};
 
 	const state = (id: string): Live => {
@@ -386,6 +446,10 @@ export default function squint(pi: ExtensionAPI) {
 	// settings.json sets hideThinkingBlock so they start minimized like a tool row.
 	pi.on("session_start", (_event, ctx) => {
 		if (direction !== OFF) ctx.ui.setHiddenThinkingLabel("THINK · click to expand");
+		// A pi update ships the stock renderer again, so the shim is put back on every start.
+		if (patchedNow() && codeBlock !== "off") {
+			ctx.ui.notify("squint: re-applied the code block shim after the pi update — restart pi to see code blocks", "info");
+		}
 	});
 
 	pi.on("tool_execution_start", (event) => {
@@ -476,11 +540,12 @@ export default function squint(pi: ExtensionAPI) {
 	};
 
 	pi.registerCommand("squint", {
-		description: `How tool calls render — ${CHOICES.map((c) => c.id).join(", ")}; or "key <binding>"`,
+		description: `How tool calls render — ${CHOICES.map((c) => c.id).join(", ")}; "code <style>" for code blocks; or "key <binding>"`,
 		getArgumentCompletions: (prefix: string) => {
 			const typed = prefix.trim().toLowerCase();
 			const matches = CHOICES.filter((c) => c.id.startsWith(typed)).map((c) => ({ value: c.id, label: `${c.id} — ${c.blurb}` }));
 			if (matches.length === 0 && "key".startsWith(typed)) matches.push({ value: "key", label: "key <binding> — set the expand/collapse shortcut" });
+			if (matches.length === 0 && "code".startsWith(typed)) matches.push({ value: "code", label: `code <style> — how code blocks render (${CODE_STYLES.map((s) => s.id).join(", ")})` });
 			return matches.length > 0 ? matches : null;
 		},
 		handler: async (args: string, ctx) => {
@@ -502,6 +567,30 @@ export default function squint(pi: ExtensionAPI) {
 				}
 				// The shortcut is fixed when the extension loads, so a new binding needs a reload.
 				await ctx.reload();
+				return;
+			}
+
+			if (head === "code") {
+				const named = tail ? CODE_STYLES.find((style) => style.id === tail) : undefined;
+				if (tail && !named) {
+					ctx.ui.notify(`squint: unknown code style "${tail}". Options: ${CODE_STYLES.map((s) => s.id).join(", ")}`, "warning");
+					return;
+				}
+				if (named) {
+					await setCodeBlock(named.id, ctx);
+					return;
+				}
+				if (!ctx.hasUI) {
+					ctx.ui.notify(`squint: code blocks ${codeBlock}`, "info");
+					return;
+				}
+				// One pick then close, like the directions picker.
+				const options = CODE_STYLES.map((style) => `${style.id === codeBlock ? "●" : "○"} ${style.label} — ${style.blurb}`);
+				const selection = await ctx.ui.select(`squint — how code blocks render (now: ${codeBlock})`, options);
+				if (!selection) return;
+				const picked = CODE_STYLES[options.indexOf(selection)];
+				if (!picked) return;
+				await setCodeBlock(picked.id, ctx);
 				return;
 			}
 

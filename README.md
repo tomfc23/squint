@@ -81,6 +81,8 @@ Either way, `/reload` in a running session picks it up.
 /squint off          hand tool calls back to pi's own rendering
 /squint custom       describe a direction; pi builds it with a local preview first
 /squint key ctrl+o   set the expand/collapse shortcut (saved, then reloaded)
+/squint code         pick how fenced code blocks render (spine, card, panel, listing, rule, chip, off)
+/squint code card    set one directly
 ```
 
 The picker lists every mode with the current one marked and closes after one choice, so the transcript
@@ -88,10 +90,10 @@ is visible behind it. The choice is saved to `<agent-dir>/squint.json` — `~/.p
 `$PI_CODING_AGENT_DIR` when set, alongside the shortcut:
 
 ```json
-{ "direction": "rail", "key": "super+e" }
+{ "direction": "rail", "key": "super+e", "codeBlock": "spine" }
 ```
 
-With no settings file, the direction is `rail` and the shortcut is `⌘E`.
+With no settings file, the direction is `rail`, the shortcut is `⌘E`, and code blocks are `spine`.
 
 Keys and gestures:
 
@@ -109,6 +111,39 @@ Behaviour worth knowing:
 - a collapsed **shell** row shows the *tail* of the output, because that is where the answer
   usually is; opening shows it from the top
 - output past 400 lines keeps a count of what is still withheld, even when open
+
+## Code blocks
+
+Tool calls are not the only thing in a transcript that has to be drawn. pi's Markdown renderer wraps
+every fenced block in the ``` fences it parsed, so code arrives wearing its own markup, and no
+extension API can change that: `registerMarkdownTransformer` rewrites markdown *text*, and every
+fence is parsed straight back into a code token. squint therefore patches the renderer once and
+keeps the patch direction-agnostic — pi asks a global, squint answers:
+
+```
+  spine    a muted language label, one left rule per line              (default)
+  card     a closed card with the label in its top rail
+  panel    a full-width ground, no glyphs spent on chrome
+  listing  a line-number gutter and a stated line count
+  rule     one hairline header carrying the language
+  chip     a filled language badge on the first line
+  off      pi's own fences, exactly as they ship
+```
+
+Syntax highlighting is untouched: the code comes from the markdown theme's own `highlightCode`, so a
+theme change moves the blocks with it. `/squint code` writes the choice to `squint.json` and reloads.
+
+Two things are worth knowing about the patch:
+
+- it lives inside the pi release (`dist/bundle/chunks/*.js` for the transcript, `@earendil-works/pi-tui`
+  for extensions that render Markdown themselves), so **a pi update ships the stock renderer again** —
+  squint re-installs it on every session start and says so, and the next restart shows the styles
+- the **first** install cannot affect the process that installed it, because the module is already
+  loaded: `/squint code` says to restart instead of pretending the switch worked. Afterwards it is a
+  live toggle like the directions, since the style is read per block
+
+The styles were chosen in a bench of seven rendered candidates: `../code-block-lab/` under the
+projects directory, which regenerates every frame from pi's own theme and `highlightCode`.
 
 ## Adding a direction
 
@@ -134,6 +169,10 @@ Three files, and the split is the point:
 |---|---|---|
 | `logic.ts` | classification, argument summaries, preview slicing | none |
 | `directions.ts` | `buildRow` (raw tool call → `Row`), `layout` (`Row` → styled segments), cell arithmetic | `logic.ts` |
+| `codeblocks.ts` | the code-block styles: `(style, code, lang, width, theme)` → styled lines | none at runtime |
+| `shim.ts` | installing/verifying the patch in pi's renderer | none at runtime |
+| `index.ts` | the pi adapter: settings, events, `/squint`, the code-block hook, one component, the per-row cache | all of it + pi |
+| `directions.ts` | `buildRow` (raw tool call → `Row`), `layout` (`Row` → styled segments), cell arithmetic | `logic.ts` |
 | `index.ts` | the pi adapter: settings, events, `/squint`, one component, the per-row cache | both + pi |
 
 `index.ts` is the only file that knows pi exists, so everything that decides *what is displayed* is
@@ -155,11 +194,15 @@ Four invariants hold it together:
 ## Tests
 
 ```bash
-npm test                    # node logic.test.ts && node directions.test.ts
+npm test                    # node logic.test.ts && node directions.test.ts && node codeblocks.test.ts
 ```
 
-Both are assert-based self-checks with no framework and no install step; they need Node 22.6+ for
-TypeScript type stripping. `directions.test.ts` runs the layouts *and* the whole path a session
+All three are assert-based self-checks with no framework and no install step; they need Node 22.6+ for
+TypeScript type stripping. `codeblocks.test.ts` checks each style against a stub theme (every style draws
+one line per code line, no style ever draws a fence, the padded ones are exactly the width they claim),
+and checks the shim against the renderer it really patches: the patched branch has to stay brace-balanced,
+installing twice has to change nothing, and an unrecognised renderer has to be reported rather than
+half-patched. `directions.test.ts` runs the layouts *and* the whole path a session
 takes — raw tool arguments and output through `buildRow` into lines — checking that every line fits
 every width tested, that no control character reaches the frame, that the columns line up between
 rows, and that the collapsed/open states each stay truthful about what they are hiding.
