@@ -41,7 +41,7 @@ pi's own palette and terminal idiom; the tone colors used by `squint` (`blue #4D
 ## Evidence on Hand
 
 - Real theme tokens: `getResolvedThemeColors("dark")` (text `#dee0e1`, muted `#9da5a9`, diff added `#68b78d`, removed `#ea7f81`, pending bg `#34383a`, success bg `#254131`, error bg `#5b282a`).
-- Real extension source: `/Users/thomaskrapf/.pi/agent/extensions/squint/` (`index.ts`, `logic.ts`).
+- Real extension source: this repository one level up — `index.ts` (the pi adapter), `logic.ts` (classification), `directions.ts` (the layouts).
 - **Absence to respect:** no screenshot of the extension in a live pi session was available, so every frame is a rendered mock and is labeled as one on the page. Assumed (not confirmed): the user runs pi's bundled `dark` theme in a truecolor terminal.
 
 ## Product Principles
