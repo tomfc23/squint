@@ -1,6 +1,7 @@
 # squint
 
-Compact transcript rendering for [pi](https://pi.dev), in five interchangeable directions.
+Compact transcript rendering for [pi](https://pi.dev): five interchangeable directions for tool
+calls, and styles for fenced code blocks.
 
 Every tool call becomes one row — a header plus a short preview, with the full output on click or the
 configured shortcut (`⌘E` by default). The *direction* decides how that row is drawn. Five ship, plus
@@ -230,6 +231,12 @@ half-patched. `directions.test.ts` runs the layouts *and* the whole path a sessi
 takes — raw tool arguments and output through `buildRow` into lines — checking that every line fits
 every width tested, that no control character reaches the frame, that the columns line up between
 rows, and that the collapsed/open states each stay truthful about what they are hiding.
+
+## Design record
+
+The benches that chose both vocabularies live in [`lab/`](lab/): five directions for one tool
+call, seven frames for one code block, each regenerated from pi's own theme. Not part of the
+package (`files` in `package.json` ships the extension alone).
 
 ## License
 

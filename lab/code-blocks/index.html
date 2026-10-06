@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>code blocks — seven ways to render one pi code block</title>
+<meta name="description" content="Render candidates for code blocks in pi's transcript: the same three blocks drawn seven ways, from pi's real theme.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%23a798d7'/%3E%3Crect x='3' y='6' width='3' height='4' fill='%2314161b'/%3E%3Crect x='7.5' y='6' width='5.5' height='1.4' fill='%2314161b'/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:"Schibsted Grotesk";font-style:normal;font-weight:400 900;font-display:swap;src:url("../fonts/schibsted-grotesk.woff2") format("woff2");}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:400 700;font-display:swap;src:url("../fonts/jetbrains-mono.woff2") format("woff2");}
+</style>
+<style>
+:root{
+  --ground:#14161b; --panel:#1b1e25; --term:#191c22; --hair:#2b3038; --hair-2:#3a414b;
+  --text:#dee0e1; --muted:#9da5a9; --dim:#7e888e; --accent:#a798d7; --blue:#4D9ABF; --gold:#F1BE58;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Schibsted Grotesk",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --r:2px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--text);font:400 15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+::selection{background:color-mix(in oklab,var(--accent) 34%,var(--ground));color:var(--text)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:var(--r)}
+a{color:var(--accent);text-underline-offset:3px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--accent);color:var(--ground);font:600 12px/1 var(--sans);padding:10px 14px}
+.skip:focus{left:0}
+.scroll{scrollbar-color:var(--hair-2) var(--term);scrollbar-width:thin}
+.scroll::-webkit-scrollbar{height:10px;width:10px}
+.scroll::-webkit-scrollbar-track{background:var(--term)}
+.scroll::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:6px}
+
+/* masthead */
+.masthead{max-width:1020px;margin:0 auto;padding:46px 26px 8px}
+.mast{display:flex;flex-wrap:wrap;gap:22px 40px;align-items:flex-end;justify-content:space-between}
+.wordmark{font-family:var(--sans);font-weight:800;font-size:clamp(38px,6.6vw,68px);line-height:.88;letter-spacing:-0.045em;margin:0;text-transform:lowercase}
+.wordmark em{font-style:normal;color:var(--accent)}
+.claim{font-family:var(--sans);font-weight:400;font-size:17px;line-height:1.45;color:var(--muted);margin:14px 0 0;max-width:60ch}
+.claim b{color:var(--text);font-weight:600}
+.stamp{font:600 12px/1.55 var(--sans);letter-spacing:.02em;color:var(--muted);border:1px solid var(--hair-2);border-radius:var(--r);padding:9px 12px;max-width:30ch}
+.brief{max-width:1020px;margin:26px auto 0;padding:0 26px}
+.brief ol{margin:0;padding:0 0 0 22px;color:var(--muted);font-size:14.5px}
+.brief li{margin:5px 0}
+.brief b{color:var(--text);font-weight:600}
+.how{max-width:1020px;margin:20px auto 0;padding:0 26px;color:var(--muted);font-size:14.5px}
+.how code{font:400 13px/1.4 var(--mono);color:var(--accent)}
+
+/* cards */
+main{max-width:1020px;margin:0 auto;padding:0 26px 60px}
+.card{border-top:1px solid var(--hair);padding:34px 0 6px}
+.card:first-of-type{border-top:0}
+.tag{font:600 11px/1.6 var(--sans);letter-spacing:.06em;color:var(--text);border:1px solid var(--gold-border);border-radius:var(--r);padding:0 6px}
+.card-head{display:grid;grid-template-columns:40px 1fr;grid-template-areas:"num name" "num thesis";gap:2px 14px;margin:0 0 16px}
+.num{grid-area:num;margin:0;font:600 12px/1.9 var(--mono);color:var(--dim);letter-spacing:.06em}
+.card h2{grid-area:name;margin:0;font-family:var(--sans);font-weight:700;font-size:clamp(20px,3.4vw,26px);line-height:1.1;letter-spacing:-0.03em}
+.thesis{grid-area:thesis;margin:6px 0 0;color:var(--muted);max-width:68ch}
+
+/* terminal frame */
+.frame{margin:0}
+.bar{display:flex;justify-content:space-between;gap:12px;padding:8px 11px;background:var(--panel);border:1px solid var(--hair);border-bottom:0;border-radius:var(--r) var(--r) 0 0;font:600 12px/1.5 var(--sans);letter-spacing:0;color:var(--muted)}
+.term{background:var(--term);border:1px solid var(--hair);border-radius:0 0 var(--r) var(--r);padding:12px 14px;font:400 13px/1.55 var(--mono);overflow-x:auto;color:var(--text)}
+.ln{white-space:pre}
+
+/* spec */
+.spec{margin:16px 0 0;display:grid;gap:6px 18px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.spec dt{font:600 11px/1.6 var(--sans);letter-spacing:.08em;color:var(--dim)}
+.spec dd{margin:2px 0 0;color:var(--muted);font-size:14px}
+
+/* dials */
+.dials{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:0 0 8px}
+.dial{margin:0;border:1px solid var(--hair);border-radius:var(--r);background:var(--term);overflow:hidden}
+.dial-term{padding:10px 12px;font:400 12.5px/1.5 var(--mono);overflow-x:auto;white-space:pre}
+.dial figcaption{padding:8px 11px;border-top:1px solid var(--hair);font:600 12px/1.5 var(--sans);letter-spacing:.01em;color:var(--muted)}
+
+/* table */
+.tablewrap{margin:0;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+caption{text-align:left;color:var(--muted);padding:0 0 6px;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:11px 14px 11px 0;border-top:1px solid var(--hair)}
+thead th{font:600 12px/1.6 var(--sans);letter-spacing:.02em;color:var(--dim);border-top:0;padding-top:0}
+tbody th{font-weight:600;color:var(--text);white-space:nowrap;width:9ch}
+tbody td{color:var(--muted)}
+h2.section{font-family:var(--sans);font-weight:700;font-size:20px;line-height:1.2;letter-spacing:-0.02em;margin:0 0 4px}
+.section-intro{color:var(--muted);margin:0 0 18px;max-width:68ch}
+section.band{border-top:1px solid var(--hair);margin-top:44px;padding-top:30px}
+
+/* ask */
+.ask{margin:44px 0 0;border:1px solid var(--hair-2);border-radius:var(--r);padding:22px 24px;background:var(--panel)}
+.ask h2{font-family:var(--sans);font-weight:700;font-size:20px;line-height:1.2;letter-spacing:-0.02em;margin:0 0 8px}
+.ask p{margin:6px 0;color:var(--muted)}
+.ask b{color:var(--text)}
+.ask ul{margin:10px 0 0;padding-left:22px;color:var(--muted)}
+.ask li{margin:4px 0}
+footer{max-width:1020px;margin:0 auto;padding:22px 26px 60px;color:var(--dim);font-size:13.5px;border-top:1px solid var(--hair)}
+
+@media (max-width:760px){
+  .masthead{padding:32px 18px 6px}
+  main,footer,.brief,.how{padding-left:18px;padding-right:18px}
+  .card-head{grid-template-columns:1fr;grid-template-areas:"num" "name" "thesis"}
+  .spec{grid-template-columns:1fr}
+  .term{font-size:12px;padding:10px}
+  table,tbody,tbody tr,tbody th,tbody td{display:block;width:auto}
+  thead{display:none}
+  tbody tr{border-top:1px solid var(--hair);padding:12px 0}
+  tbody th{border:0;padding:0 0 4px}
+  tbody td{border:0;padding:0 0 3px}
+  tbody td::before{content:"";display:block;font:600 11px/1.8 var(--sans);letter-spacing:.04em;color:var(--dim)}
+  tbody tr td:nth-of-type(1)::before{content:"borrowed"}
+  tbody tr td:nth-of-type(2)::before{content:"best at"}
+  tbody tr td:nth-of-type(3)::before{content:"cost"}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#c01">Skip to the candidates</a>
+
+<header class="masthead">
+  <div class="mast">
+    <div>
+      <h1 class="wordmark">code <em>blocks</em></h1>
+      <p class="claim">Seven ways for pi's transcript to draw one fenced code block. The same three blocks in every candidate: a <b>ts</b> edit, a <b>diff</b>, and a language-less JSON blob. The comparison is the design and nothing else.</p>
+    </div>
+    <p class="stamp">Rendered from pi's live dark theme and hljs. Not screenshots.</p>
+  </div>
+</header>
+
+<div class="brief">
+  <ol>
+    <li>Every frame below is drawn by <b>render.mjs</b>: pi's resolved theme colors for chrome, pi's own <b>highlightCode</b> for the code, the glyphs pi and squint already draw. Nothing is a hand-picked hex or a picture of a terminal.</li>
+    <li>The transcript cannot do per-block affordances: no copy button, no collapse, no hover. Any candidate that needs one is out.</li>
+    <li>Below about 760px the frames scroll sideways rather than reflow: a real transcript line is 74 columns and a phone is not, so shrinking the type would lie about the fit.</li>
+    <li>These are the constraints the real renderer has: a block is <b>lines of styled text</b>, drawn at a known width, with <b>highlightCode(code, lang)</b> available and the language optional.</li>
+  </ol>
+</div>
+
+<p class="how">Pick by number: reply <code>01</code>...<code>06</code> (or "01 with the heavy bar"). The choice ships as <code>/squint</code> → <b>Code blocks</b> → a style (or <code>/squint card</code> directly). The choice lives in squint, and this page regenerates from the same theme squint reads.</p>
+
+<main>
+<section class="card" id="c00">
+  <header class="card-head">
+    <p class="num">00</p>
+    <h2>What ships today</h2>
+    <p class="thesis">pi prints the fence lines themselves as the border, so the block wears its own markdown.</p>
+  </header>
+  <figure class="frame">
+  <figcaption class="bar"><span>00 · What ships today</span><span class="tag">shipping today</span></figcaption>
+  <div class="term" role="img" aria-label="00 · What ships today — rendered code block"><div class="ln"><span style="color:#dee0e1">Done </span><span style="color:#dee0e1">— </span><span style="color:#dee0e1">toggling </span><span style="color:#dee0e1">now </span><span style="color:#dee0e1">always </span><span style="color:#dee0e1">lands </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">top </span><span style="color:#dee0e1">row.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">```ts</span></div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.loadModelsFromSnapshot?.();</div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.filterModels?.(<span style="color:rgb(167 152 215)">this</span>.searchInput?.getValue() ?? <span style="color:rgb(222 141 90)">""</span>);</div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.selectedIndex = <span style="color:rgb(104 183 141)">0</span>; <span style="color:rgb(157 165 169)">// the new order starts at the top, not at the old model</span></div>
+    <div class="ln"><span style="color:#9da5a9">```</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">Verified </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">real </span><span style="color:#dee0e1">TUI </span><span style="color:#dee0e1">both </span><span style="color:#dee0e1">directions, </span><span style="color:#dee0e1">with </span><span style="color:#a798d7">selectedIndex </span><span style="color:#a798d7">=== </span><span style="color:#a798d7">0</span><span style="color:#dee0e1"> </span><span style="color:#dee0e1">now </span></div>
+    <div class="ln"><span style="color:#dee0e1">asserted </span><span style="color:#dee0e1">in </span><span style="color:#dee0e1">sort.test.mjs.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">```diff</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">--- a/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">+++ b/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">@@ -18,1 +18,1 @@</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">-assert(selected === previousIndex)</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">+assert(selectedIndex === 0)</span></div>
+    <div class="ln"><span style="color:#9da5a9">```</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">It </span><span style="color:#dee0e1">reads </span><span style="color:#dee0e1">one </span><span style="color:#dee0e1">settings </span><span style="color:#dee0e1">file </span><span style="color:#dee0e1">at </span><span style="color:#dee0e1">startup:</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">```</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">{</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">  "direction": "rail",</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">  "key": "super+e"</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">}</span></div>
+    <div class="ln"><span style="color:#9da5a9">```</span></div></div>
+</figure>
+  <dl class="spec">
+    <div><dt>borrowed</dt><dd>stock pi</dd></div>
+    <div><dt>best at</dt><dd>nothing</dd></div>
+    <div><dt>cost</dt><dd>the backticks are the only delimiter, and they read as noise on every block</dd></div>
+  </dl>
+</section>
+<section class="card" id="c01">
+  <header class="card-head">
+    <p class="num">01</p>
+    <h2>Spine</h2>
+    <p class="thesis">A muted language label, then one left rule per line. No fences; the code carries the block.</p>
+  </header>
+  <figure class="frame">
+  <figcaption class="bar"><span>01 · Spine</span><span class="tag">shipping today</span></figcaption>
+  <div class="term" role="img" aria-label="01 · Spine — rendered code block"><div class="ln"><span style="color:#dee0e1">Done </span><span style="color:#dee0e1">— </span><span style="color:#dee0e1">toggling </span><span style="color:#dee0e1">now </span><span style="color:#dee0e1">always </span><span style="color:#dee0e1">lands </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">top </span><span style="color:#dee0e1">row.</span></div>
+    <div class="ln"> </div>
+    <div class="ln">  <span style="color:#9da5a9">ts</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.loadModelsFromSnapshot?.();</div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.filterModels?.(<span style="color:rgb(167 152 215)">this</span>.searchInput?.getValue() ?? <span style="color:rgb(222 141 90)">""</span>);</div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.selectedIndex = <span style="color:rgb(104 183 141)">0</span>; <span style="color:rgb(157 165 169)">// the new order starts at the top, not at the old model</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">Verified </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">real </span><span style="color:#dee0e1">TUI </span><span style="color:#dee0e1">both </span><span style="color:#dee0e1">directions, </span><span style="color:#dee0e1">with </span><span style="color:#a798d7">selectedIndex </span><span style="color:#a798d7">=== </span><span style="color:#a798d7">0</span><span style="color:#dee0e1"> </span><span style="color:#dee0e1">now </span></div>
+    <div class="ln"><span style="color:#dee0e1">asserted </span><span style="color:#dee0e1">in </span><span style="color:#dee0e1">sort.test.mjs.</span></div>
+    <div class="ln"> </div>
+    <div class="ln">  <span style="color:#9da5a9">diff</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">--- a/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">+++ b/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">@@ -18,1 +18,1 @@</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">-assert(selected === previousIndex)</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">+assert(selectedIndex === 0)</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">It </span><span style="color:#dee0e1">reads </span><span style="color:#dee0e1">one </span><span style="color:#dee0e1">settings </span><span style="color:#dee0e1">file </span><span style="color:#dee0e1">at </span><span style="color:#dee0e1">startup:</span></div>
+    <div class="ln"> </div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">{</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">  "direction": "rail",</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">  "key": "super+e"</span></div>
+    <div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">}</span></div></div>
+</figure>
+  <dl class="spec">
+    <div><dt>borrowed</dt><dd>Claude Code, Cursor CLI, opencode: the left-rule family</dd></div>
+    <div><dt>best at</dt><dd>long sessions where code should stay quiet</dd></div>
+    <div><dt>cost</dt><dd>no closing edge; two blocks in a row separate only by the blank line</dd></div>
+  </dl>
+</section>
+<section class="card" id="c02">
+  <header class="card-head">
+    <p class="num">02</p>
+    <h2>Card</h2>
+    <p class="thesis">The block is a closed object: rounded corners, label set into the top rail, all four edges ruled.</p>
+  </header>
+  <figure class="frame">
+  <figcaption class="bar"><span>02 · Card</span></figcaption>
+  <div class="term" role="img" aria-label="02 · Card — rendered code block"><div class="ln"><span style="color:#dee0e1">Done </span><span style="color:#dee0e1">— </span><span style="color:#dee0e1">toggling </span><span style="color:#dee0e1">now </span><span style="color:#dee0e1">always </span><span style="color:#dee0e1">lands </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">top </span><span style="color:#dee0e1">row.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">╭─ ts ──────────────────────────────────────────────────────────────────╮</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.loadModelsFromSnapshot?.();                                      <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.filterModels?.(<span style="color:rgb(167 152 215)">this</span>.searchInput?.getValue() ?? <span style="color:rgb(222 141 90)">""</span>);              <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.selectedIndex = <span style="color:rgb(104 183 141)">0</span>; <span style="color:rgb(157 165 169)">// the new order starts at the top, not at the old model</span><span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">╰──────────────────────────────────────────────────────────────────────╯</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">Verified </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">real </span><span style="color:#dee0e1">TUI </span><span style="color:#dee0e1">both </span><span style="color:#dee0e1">directions, </span><span style="color:#dee0e1">with </span><span style="color:#a798d7">selectedIndex </span><span style="color:#a798d7">=== </span><span style="color:#a798d7">0</span><span style="color:#dee0e1"> </span><span style="color:#dee0e1">now </span></div>
+    <div class="ln"><span style="color:#dee0e1">asserted </span><span style="color:#dee0e1">in </span><span style="color:#dee0e1">sort.test.mjs.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">╭─ diff ────────────────────────────────────────────────────────────────╮</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">--- a/sort.test.mjs</span>                                                   <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">+++ b/sort.test.mjs</span>                                                   <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">@@ -18,1 +18,1 @@</span>                                                     <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">-assert(selected === previousIndex)</span>                                   <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">+assert(selectedIndex === 0)</span>                                          <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">╰──────────────────────────────────────────────────────────────────────╯</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">It </span><span style="color:#dee0e1">reads </span><span style="color:#dee0e1">one </span><span style="color:#dee0e1">settings </span><span style="color:#dee0e1">file </span><span style="color:#dee0e1">at </span><span style="color:#dee0e1">startup:</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">╭───────────────────────────────────────────────────────────────────────╮</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">{</span>                                                                     <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">  "direction": "rail",</span>                                                <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">  "key": "super+e"</span>                                                    <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">}</span>                                                                     <span style="color:#9da5a9"> │</span></div>
+    <div class="ln"><span style="color:#9da5a9">╰──────────────────────────────────────────────────────────────────────╯</span></div></div>
+</figure>
+  <dl class="spec">
+    <div><dt>borrowed</dt><dd>squint's deck direction · Claude Code's box glyph sets</dd></div>
+    <div><dt>best at</dt><dd>one block you are meant to study, and blocks inside prose</dd></div>
+    <div><dt>cost</dt><dd>two rail lines per block, and it competes with squint's own tool cards</dd></div>
+  </dl>
+</section>
+<section class="card" id="c03">
+  <header class="card-head">
+    <p class="num">03</p>
+    <h2>Panel</h2>
+    <p class="thesis">A full-width ground behind the code and nothing else. The block is a lit surface, not a frame.</p>
+  </header>
+  <figure class="frame">
+  <figcaption class="bar"><span>03 · Panel</span></figcaption>
+  <div class="term" role="img" aria-label="03 · Panel — rendered code block"><div class="ln"><span style="color:#dee0e1">Done </span><span style="color:#dee0e1">— </span><span style="color:#dee0e1">toggling </span><span style="color:#dee0e1">now </span><span style="color:#dee0e1">always </span><span style="color:#dee0e1">lands </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">top </span><span style="color:#dee0e1">row.</span></div>
+    <div class="ln"> </div>
+    <div class="ln">                                                                        <span style="color:#9da5a9">ts</span></div>
+    <div class="ln"><span style="color:rgb(167 152 215);background:#34383a">this</span><span style="background:#34383a">.loadModelsFromSnapshot?.();</span><span style="background:#34383a">                                          </span></div>
+    <div class="ln"><span style="color:rgb(167 152 215);background:#34383a">this</span><span style="background:#34383a">.filterModels?.(</span><span style="color:rgb(167 152 215);background:#34383a">this</span><span style="background:#34383a">.searchInput?.getValue() ?? </span><span style="color:rgb(222 141 90);background:#34383a">""</span><span style="background:#34383a">);</span><span style="background:#34383a">                  </span></div>
+    <div class="ln"><span style="color:rgb(167 152 215);background:#34383a">this</span><span style="background:#34383a">.selectedIndex = </span><span style="color:rgb(104 183 141);background:#34383a">0</span><span style="background:#34383a">; </span><span style="color:rgb(157 165 169);background:#34383a">// the new order starts at the top, not at the old model</span><span style="background:#34383a"></span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">Verified </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">real </span><span style="color:#dee0e1">TUI </span><span style="color:#dee0e1">both </span><span style="color:#dee0e1">directions, </span><span style="color:#dee0e1">with </span><span style="color:#a798d7">selectedIndex </span><span style="color:#a798d7">=== </span><span style="color:#a798d7">0</span><span style="color:#dee0e1"> </span><span style="color:#dee0e1">now </span></div>
+    <div class="ln"><span style="color:#dee0e1">asserted </span><span style="color:#dee0e1">in </span><span style="color:#dee0e1">sort.test.mjs.</span></div>
+    <div class="ln"> </div>
+    <div class="ln">                                                                      <span style="color:#9da5a9">diff</span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">--- a/sort.test.mjs</span><span style="background:#34383a">                                                       </span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">+++ b/sort.test.mjs</span><span style="background:#34383a">                                                       </span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">@@ -18,1 +18,1 @@</span><span style="background:#34383a">                                                         </span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">-assert(selected === previousIndex)</span><span style="background:#34383a">                                       </span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">+assert(selectedIndex === 0)</span><span style="background:#34383a">                                              </span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">It </span><span style="color:#dee0e1">reads </span><span style="color:#dee0e1">one </span><span style="color:#dee0e1">settings </span><span style="color:#dee0e1">file </span><span style="color:#dee0e1">at </span><span style="color:#dee0e1">startup:</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">{</span><span style="background:#34383a">                                                                         </span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">  "direction": "rail",</span><span style="background:#34383a">                                                    </span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">  "key": "super+e"</span><span style="background:#34383a">                                                        </span></div>
+    <div class="ln"><span style="color:rgb(104 183 141);background:#34383a">}</span><span style="background:#34383a">                                                                         </span></div></div>
+</figure>
+  <dl class="spec">
+    <div><dt>borrowed</dt><dd>Warp · ChatGPT and Claude web · pi's own tool panels (toolPendingBg)</dd></div>
+    <div><dt>best at</dt><dd>the strongest separation with zero glyphs spent on chrome</dd></div>
+    <div><dt>cost</dt><dd>a panel is heavier than code deserves for one-liners, and it fights the tool panels' meaning</dd></div>
+  </dl>
+</section>
+<section class="card" id="c04">
+  <header class="card-head">
+    <p class="num">04</p>
+    <h2>Listing</h2>
+    <p class="thesis">Line numbers in a dim gutter and a stated count. The block reads as a listing you can cite.</p>
+  </header>
+  <figure class="frame">
+  <figcaption class="bar"><span>04 · Listing</span></figcaption>
+  <div class="term" role="img" aria-label="04 · Listing — rendered code block"><div class="ln"><span style="color:#dee0e1">Done </span><span style="color:#dee0e1">— </span><span style="color:#dee0e1">toggling </span><span style="color:#dee0e1">now </span><span style="color:#dee0e1">always </span><span style="color:#dee0e1">lands </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">top </span><span style="color:#dee0e1">row.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">ts</span>                                                               <span style="color:#7e888e">3 lines</span></div>
+    <div class="ln"><span style="color:#7e888e"> 1 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.loadModelsFromSnapshot?.();</div>
+    <div class="ln"><span style="color:#7e888e"> 2 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.filterModels?.(<span style="color:rgb(167 152 215)">this</span>.searchInput?.getValue() ?? <span style="color:rgb(222 141 90)">""</span>);</div>
+    <div class="ln"><span style="color:#7e888e"> 3 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(167 152 215)">this</span>.selectedIndex = <span style="color:rgb(104 183 141)">0</span>; <span style="color:rgb(157 165 169)">// the new order starts at the top, not at the old model</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">Verified </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">real </span><span style="color:#dee0e1">TUI </span><span style="color:#dee0e1">both </span><span style="color:#dee0e1">directions, </span><span style="color:#dee0e1">with </span><span style="color:#a798d7">selectedIndex </span><span style="color:#a798d7">=== </span><span style="color:#a798d7">0</span><span style="color:#dee0e1"> </span><span style="color:#dee0e1">now </span></div>
+    <div class="ln"><span style="color:#dee0e1">asserted </span><span style="color:#dee0e1">in </span><span style="color:#dee0e1">sort.test.mjs.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">diff</span>                                                             <span style="color:#7e888e">5 lines</span></div>
+    <div class="ln"><span style="color:#7e888e"> 1 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">--- a/sort.test.mjs</span></div>
+    <div class="ln"><span style="color:#7e888e"> 2 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">+++ b/sort.test.mjs</span></div>
+    <div class="ln"><span style="color:#7e888e"> 3 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">@@ -18,1 +18,1 @@</span></div>
+    <div class="ln"><span style="color:#7e888e"> 4 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">-assert(selected === previousIndex)</span></div>
+    <div class="ln"><span style="color:#7e888e"> 5 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">+assert(selectedIndex === 0)</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">It </span><span style="color:#dee0e1">reads </span><span style="color:#dee0e1">one </span><span style="color:#dee0e1">settings </span><span style="color:#dee0e1">file </span><span style="color:#dee0e1">at </span><span style="color:#dee0e1">startup:</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#7e888e"> 1 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">{</span></div>
+    <div class="ln"><span style="color:#7e888e"> 2 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">  "direction": "rail",</span></div>
+    <div class="ln"><span style="color:#7e888e"> 3 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">  "key": "super+e"</span></div>
+    <div class="ln"><span style="color:#7e888e"> 4 </span><span style="color:#9da5a9">│ </span><span style="color:rgb(104 183 141)">}</span></div></div>
+</figure>
+  <dl class="spec">
+    <div><dt>borrowed</dt><dd>GitHub and GitLab code view · bat · less -N</dd></div>
+    <div><dt>best at</dt><dd>quoting back a line ('the guard on line 3'), and diffs</dd></div>
+    <div><dt>cost</dt><dd>numbering a two-line snippet is ceremony; numbers only ever start at 1</dd></div>
+  </dl>
+</section>
+<section class="card" id="c05">
+  <header class="card-head">
+    <p class="num">05</p>
+    <h2>Rule</h2>
+    <p class="thesis">One hairline header with the language in it, then plain indented code. The lightest chrome that still labels.</p>
+  </header>
+  <figure class="frame">
+  <figcaption class="bar"><span>05 · Rule</span></figcaption>
+  <div class="term" role="img" aria-label="05 · Rule — rendered code block"><div class="ln"><span style="color:#dee0e1">Done </span><span style="color:#dee0e1">— </span><span style="color:#dee0e1">toggling </span><span style="color:#dee0e1">now </span><span style="color:#dee0e1">always </span><span style="color:#dee0e1">lands </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">top </span><span style="color:#dee0e1">row.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">ts </span><span style="color:#9da5a9">───────────────────────────────────────────────────────────────────────</span></div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.loadModelsFromSnapshot?.();</div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.filterModels?.(<span style="color:rgb(167 152 215)">this</span>.searchInput?.getValue() ?? <span style="color:rgb(222 141 90)">""</span>);</div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.selectedIndex = <span style="color:rgb(104 183 141)">0</span>; <span style="color:rgb(157 165 169)">// the new order starts at the top, not at the old model</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">Verified </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">real </span><span style="color:#dee0e1">TUI </span><span style="color:#dee0e1">both </span><span style="color:#dee0e1">directions, </span><span style="color:#dee0e1">with </span><span style="color:#a798d7">selectedIndex </span><span style="color:#a798d7">=== </span><span style="color:#a798d7">0</span><span style="color:#dee0e1"> </span><span style="color:#dee0e1">now </span></div>
+    <div class="ln"><span style="color:#dee0e1">asserted </span><span style="color:#dee0e1">in </span><span style="color:#dee0e1">sort.test.mjs.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#9da5a9">diff </span><span style="color:#9da5a9">─────────────────────────────────────────────────────────────────────</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">--- a/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">+++ b/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">@@ -18,1 +18,1 @@</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">-assert(selected === previousIndex)</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">+assert(selectedIndex === 0)</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">It </span><span style="color:#dee0e1">reads </span><span style="color:#dee0e1">one </span><span style="color:#dee0e1">settings </span><span style="color:#dee0e1">file </span><span style="color:#dee0e1">at </span><span style="color:#dee0e1">startup:</span></div>
+    <div class="ln"> </div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">{</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">  "direction": "rail",</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">  "key": "super+e"</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">}</span></div></div>
+</figure>
+  <dl class="spec">
+    <div><dt>borrowed</dt><dd>GitHub web's file header · documentation styles</dd></div>
+    <div><dt>best at</dt><dd>prose-heavy answers where code is a short interruption</dd></div>
+    <div><dt>cost</dt><dd>no closing edge, and a full-width rule can be mistaken for a markdown hr</dd></div>
+  </dl>
+</section>
+<section class="card" id="c06">
+  <header class="card-head">
+    <p class="num">06</p>
+    <h2>Chip</h2>
+    <p class="thesis">The language is a filled badge on the first line, in squint's tool palette. Immediately scannable.</p>
+  </header>
+  <figure class="frame">
+  <figcaption class="bar"><span>06 · Chip</span></figcaption>
+  <div class="term" role="img" aria-label="06 · Chip — rendered code block"><div class="ln"><span style="color:#dee0e1">Done </span><span style="color:#dee0e1">— </span><span style="color:#dee0e1">toggling </span><span style="color:#dee0e1">now </span><span style="color:#dee0e1">always </span><span style="color:#dee0e1">lands </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">top </span><span style="color:#dee0e1">row.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"> <span style="color:#181a20;background:#69add0;font-weight:700"> TS </span>  <span style="color:rgb(167 152 215)">this</span>.loadModelsFromSnapshot?.();</div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.filterModels?.(<span style="color:rgb(167 152 215)">this</span>.searchInput?.getValue() ?? <span style="color:rgb(222 141 90)">""</span>);</div>
+    <div class="ln">  <span style="color:rgb(167 152 215)">this</span>.selectedIndex = <span style="color:rgb(104 183 141)">0</span>; <span style="color:rgb(157 165 169)">// the new order starts at the top, not at the old model</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">Verified </span><span style="color:#dee0e1">on </span><span style="color:#dee0e1">the </span><span style="color:#dee0e1">real </span><span style="color:#dee0e1">TUI </span><span style="color:#dee0e1">both </span><span style="color:#dee0e1">directions, </span><span style="color:#dee0e1">with </span><span style="color:#a798d7">selectedIndex </span><span style="color:#a798d7">=== </span><span style="color:#a798d7">0</span><span style="color:#dee0e1"> </span><span style="color:#dee0e1">now </span></div>
+    <div class="ln"><span style="color:#dee0e1">asserted </span><span style="color:#dee0e1">in </span><span style="color:#dee0e1">sort.test.mjs.</span></div>
+    <div class="ln"> </div>
+    <div class="ln"> <span style="color:#181a20;background:#69add0;font-weight:700"> DIFF </span>  <span style="color:rgb(104 183 141)">--- a/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">+++ b/sort.test.mjs</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">@@ -18,1 +18,1 @@</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">-assert(selected === previousIndex)</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">+assert(selectedIndex === 0)</span></div>
+    <div class="ln"> </div>
+    <div class="ln"><span style="color:#dee0e1">It </span><span style="color:#dee0e1">reads </span><span style="color:#dee0e1">one </span><span style="color:#dee0e1">settings </span><span style="color:#dee0e1">file </span><span style="color:#dee0e1">at </span><span style="color:#dee0e1">startup:</span></div>
+    <div class="ln"> </div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">{</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">  "direction": "rail",</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">  "key": "super+e"</span></div>
+    <div class="ln">  <span style="color:rgb(104 183 141)">}</span></div></div>
+</figure>
+  <dl class="spec">
+    <div><dt>borrowed</dt><dd>squint's badge direction and GitHub's language pill, drawn in pi's blue token</dd></div>
+    <div><dt>best at</dt><dd>scanning a long answer for 'where is the code'</dd></div>
+    <div><dt>cost</dt><dd>loud on every block, and it says nothing about where the block ends</dd></div>
+  </dl>
+</section>
+
+<section class="band">
+  <h2 class="section">Details worth dialing after the idea is chosen</h2>
+  <p class="section-intro">The direction picks the structure; these are the knobs inside it. Shown at 74 columns, same code, so only the detail changes.</p>
+  <div class="dials">
+<figure class="dial">
+    <div class="dial-term"><div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(105 173 208)">const</span> a = <span style="color:rgb(104 183 141)">1</span>; <span style="color:rgb(157 165 169)">// one line</span></div></div>
+    <figcaption>rule weight: thin │ (01)</figcaption>
+  </figure>
+<figure class="dial">
+    <div class="dial-term"><div class="ln">  <span style="color:#9da5a9">▌ </span><span style="color:rgb(105 173 208)">const</span> a = <span style="color:rgb(104 183 141)">1</span>; <span style="color:rgb(157 165 169)">// one line</span></div></div>
+    <figcaption>rule weight: heavy ▌ (Zed, Warp)</figcaption>
+  </figure>
+<figure class="dial">
+    <div class="dial-term"><div class="ln">                                                                        <span style="color:#9da5a9">ts</span></div><div class="ln">  <span style="color:#9da5a9">│ </span><span style="color:rgb(105 173 208)">const</span> a = <span style="color:rgb(104 183 141)">1</span>; <span style="color:rgb(157 165 169)">// one line</span></div></div>
+    <figcaption>label: right-aligned</figcaption>
+  </figure>
+<figure class="dial">
+    <div class="dial-term"><div class="ln">  <span style="color:#7e888e">ts </span><span style="color:rgb(105 173 208)">const</span> a = <span style="color:rgb(104 183 141)">1</span>; <span style="color:rgb(157 165 169)">// one line</span></div></div>
+    <figcaption>label: on the first line</figcaption>
+  </figure>
+<figure class="dial">
+    <div class="dial-term"><div class="ln"><span style="color:#9da5a9">│ </span><span style="color:rgb(105 173 208)">const</span> a = <span style="color:rgb(104 183 141)">1</span>; <span style="color:rgb(157 165 169)">// one line</span></div></div>
+    <figcaption>indent: 0 instead of 2</figcaption>
+  </figure>
+  </div>
+</section>
+
+<section class="band">
+  <h2 class="section">Trade-offs, side by side</h2>
+  <div class="tablewrap scroll">
+    <table>
+      <caption>Candidates 01–06, ordered by how little chrome they spend. 00 is pi's own rendering, kept as <code>off</code>.</caption>
+      <thead><tr><th scope="col">Candidate</th><th scope="col">Borrowed from</th><th scope="col">Best at</th><th scope="col">Cost</th></tr></thead>
+      <tbody>
+<tr><th scope="row">02 Card</th><td>squint's deck direction · Claude Code's box glyph sets</td><td>one block you are meant to study, and blocks inside prose</td><td>two rail lines per block, and it competes with squint's own tool cards</td></tr>
+<tr><th scope="row">03 Panel</th><td>Warp · ChatGPT and Claude web · pi's own tool panels (toolPendingBg)</td><td>the strongest separation with zero glyphs spent on chrome</td><td>a panel is heavier than code deserves for one-liners, and it fights the tool panels' meaning</td></tr>
+<tr><th scope="row">04 Listing</th><td>GitHub and GitLab code view · bat · less -N</td><td>quoting back a line ('the guard on line 3'), and diffs</td><td>numbering a two-line snippet is ceremony; numbers only ever start at 1</td></tr>
+<tr><th scope="row">05 Rule</th><td>GitHub web's file header · documentation styles</td><td>prose-heavy answers where code is a short interruption</td><td>no closing edge, and a full-width rule can be mistaken for a markdown hr</td></tr>
+<tr><th scope="row">06 Chip</th><td>squint's badge direction and GitHub's language pill, drawn in pi's blue token</td><td>scanning a long answer for 'where is the code'</td><td>loud on every block, and it says nothing about where the block ends</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="ask">
+  <h2>What I need from you</h2>
+  <p><b>One number</b>, plus any dial you want flipped. The winner is a style in <code>squint</code>, picked from its own menu, with <b>off</b> keeping pi's fences. Three worth naming up front, because they change the answer:</p>
+  <ul>
+    <li><b>01 Spine</b> is the default <code>/squint code spine</code> ships with. It is the quiet default and the one every competitor lands near.</li>
+    <li><b>02 Card</b> and <b>03 Panel</b> spend the most chrome. If code blocks in pi should look like squint's tool cards, 02 is the congruent choice; if they should look like pi's own panels, 03 is.</li>
+    <li><b>04 Listing</b> is the only one that changes what you can <em>do</em> with a block afterwards: cite it by line number.</li>
+  </ul>
+</section>
+</main>
+
+<footer>
+  Same content in every frame. Chrome colors resolve from <code>getResolvedThemeColors("dark")</code> in the active pi release; code colors come from pi's <code>highlightCode</code>, so a theme change or a new pi version moves this page with it. Regenerate with <code>node render.mjs</code>; ship a winner with <code>/squint</code>.
+</footer>
+</body>
+</html>

@@ -1,0 +1,607 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-04T17:10:47.516Z",
+  "title": "Design System: squint Render Lab",
+  "extensions": {
+    "colorMeta": {
+      "tool-violet": {
+        "role": "primary",
+        "displayName": "Tool Violet",
+        "canonical": "oklch(71.6% 0.092 294.9)",
+        "sourceHex": "#a798d7",
+        "tonalRamp": [
+          "#100029",
+          "#29184c",
+          "#46366d",
+          "#655690",
+          "#8677b4",
+          "#a99ad9",
+          "#cdbffc",
+          "#efebff"
+        ]
+      },
+      "lab-black": {
+        "role": "neutral",
+        "displayName": "Laboratory Black",
+        "canonical": "oklch(20.0% 0.010 268.2)",
+        "sourceHex": "#14161b",
+        "tonalRamp": [
+          "#090b10",
+          "#23252a",
+          "#3f4248",
+          "#5f6167",
+          "#7f8289",
+          "#a2a5ac",
+          "#c6c9d0",
+          "#ebeef6"
+        ]
+      },
+      "panel-graphite": {
+        "role": "neutral",
+        "displayName": "Panel Graphite",
+        "canonical": "oklch(23.5% 0.014 267.0)",
+        "sourceHex": "#1b1e25",
+        "tonalRamp": [
+          "#080b11",
+          "#22252c",
+          "#3e424a",
+          "#5d616a",
+          "#7e828b",
+          "#a1a5ae",
+          "#c5c9d3",
+          "#eaeef8"
+        ]
+      },
+      "frame-graphite": {
+        "role": "neutral",
+        "displayName": "Frame Graphite",
+        "canonical": "oklch(22.6% 0.013 264.3)",
+        "sourceHex": "#191c22",
+        "tonalRamp": [
+          "#090b11",
+          "#22252b",
+          "#3f4249",
+          "#5e6169",
+          "#7e828a",
+          "#a1a5ad",
+          "#c5c9d2",
+          "#eaeff7"
+        ]
+      },
+      "bar-graphite": {
+        "role": "neutral",
+        "displayName": "Bar Graphite",
+        "canonical": "oklch(21.7% 0.013 264.3)",
+        "sourceHex": "#171a20",
+        "tonalRamp": [
+          "#090b11",
+          "#22252b",
+          "#3f4249",
+          "#5e6169",
+          "#7e828a",
+          "#a1a5ad",
+          "#c5c9d2",
+          "#eaeff7"
+        ]
+      },
+      "nested-graphite": {
+        "role": "neutral",
+        "displayName": "Nested Graphite",
+        "canonical": "oklch(21.6% 0.013 258.4)",
+        "sourceHex": "#161a20",
+        "tonalRamp": [
+          "#080b11",
+          "#21252c",
+          "#3e4249",
+          "#5d6269",
+          "#7d838a",
+          "#a0a5ae",
+          "#c4cad2",
+          "#e9eff8"
+        ]
+      },
+      "hover-graphite": {
+        "role": "neutral",
+        "displayName": "Hover Graphite",
+        "canonical": "oklch(25.6% 0.016 264.2)",
+        "sourceHex": "#1f232b",
+        "tonalRamp": [
+          "#080b12",
+          "#21252d",
+          "#3e424b",
+          "#5d616b",
+          "#7d828c",
+          "#a0a5b0",
+          "#c4c9d4",
+          "#e9effa"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(30.8% 0.016 259.8)",
+        "sourceHex": "#2b3038",
+        "tonalRamp": [
+          "#070b12",
+          "#20252d",
+          "#3d424b",
+          "#5c626b",
+          "#7d838c",
+          "#9fa5af",
+          "#c3cad4",
+          "#e8effa"
+        ]
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "oklch(37.3% 0.020 257.3)",
+        "sourceHex": "#3a414b",
+        "tonalRamp": [
+          "#060b13",
+          "#1f252f",
+          "#3c434d",
+          "#5a626d",
+          "#7b838e",
+          "#9da6b2",
+          "#c1cad6",
+          "#e6effc"
+        ]
+      },
+      "instrument-white": {
+        "role": "neutral",
+        "displayName": "Instrument White",
+        "canonical": "oklch(90.5% 0.003 228.8)",
+        "sourceHex": "#dee0e1",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818383",
+          "#a3a5a6",
+          "#c7c9ca",
+          "#edeff0"
+        ]
+      },
+      "readout-grey": {
+        "role": "neutral",
+        "displayName": "Readout Grey",
+        "canonical": "oklch(71.7% 0.011 229.0)",
+        "sourceHex": "#9da5a9",
+        "tonalRamp": [
+          "#070c0f",
+          "#202629",
+          "#3c4347",
+          "#5b6366",
+          "#7c8488",
+          "#9ea6aa",
+          "#c2cbcf",
+          "#e7f0f4"
+        ]
+      },
+      "dim-readout": {
+        "role": "neutral",
+        "displayName": "Dim Readout",
+        "canonical": "oklch(62.0% 0.015 233.9)",
+        "sourceHex": "#7e888e",
+        "tonalRamp": [
+          "#060c10",
+          "#1e262b",
+          "#3b4349",
+          "#596368",
+          "#7a848a",
+          "#9ca7ad",
+          "#c0cbd1",
+          "#e5f0f7"
+        ]
+      },
+      "chip-ink": {
+        "role": "neutral",
+        "displayName": "Chip Ink",
+        "canonical": "oklch(21.8% 0.012 270.8)",
+        "sourceHex": "#181a20",
+        "tonalRamp": [
+          "#090b10",
+          "#23252b",
+          "#3f4249",
+          "#5e6168",
+          "#7f828a",
+          "#a2a5ad",
+          "#c6c9d1",
+          "#ebeef7"
+        ]
+      },
+      "user-band": {
+        "role": "neutral",
+        "displayName": "Prompt Band",
+        "canonical": "oklch(33.8% 0.040 233.3)",
+        "sourceHex": "#213b49",
+        "tonalRamp": [
+          "#000d16",
+          "#0e2836",
+          "#2c4654",
+          "#4a6575",
+          "#6b8797",
+          "#8daabb",
+          "#b0cee0",
+          "#ddf2ff"
+        ]
+      },
+      "pending-band": {
+        "role": "neutral",
+        "displayName": "Pending Band",
+        "canonical": "oklch(33.8% 0.007 229.0)",
+        "sourceHex": "#34383a",
+        "tonalRamp": [
+          "#080c0d",
+          "#222628",
+          "#3f4345",
+          "#5e6264",
+          "#7e8385",
+          "#a1a6a8",
+          "#c5cacc",
+          "#eaeff2"
+        ]
+      },
+      "tool-blue": {
+        "role": "tertiary",
+        "displayName": "Read Blue",
+        "canonical": "oklch(65.2% 0.094 231.5)",
+        "sourceHex": "#4D9ABF",
+        "tonalRamp": [
+          "#000d16",
+          "#032939",
+          "#074862",
+          "#136a8d",
+          "#3e8cb1",
+          "#63b0d6",
+          "#87d5fc",
+          "#dcf3ff"
+        ]
+      },
+      "tool-coral": {
+        "role": "tertiary",
+        "displayName": "Write Coral",
+        "canonical": "oklch(75.1% 0.119 29.0)",
+        "sourceHex": "#F09082",
+        "tonalRamp": [
+          "#1f0000",
+          "#4c0201",
+          "#742018",
+          "#994238",
+          "#bf6458",
+          "#e68779",
+          "#fdb4a9",
+          "#fee9e5"
+        ]
+      },
+      "tool-gold": {
+        "role": "tertiary",
+        "displayName": "Shell Gold",
+        "canonical": "oklch(82.8% 0.132 82.4)",
+        "sourceHex": "#F1BE58",
+        "tonalRamp": [
+          "#110a00",
+          "#312202",
+          "#563d04",
+          "#7c5b0c",
+          "#a77a03",
+          "#ce9c31",
+          "#f4c05b",
+          "#ffecca"
+        ]
+      },
+      "gold-border": {
+        "role": "tertiary",
+        "displayName": "Gold Border",
+        "canonical": "oklch(42.4% 0.048 83.2)",
+        "sourceHex": "#5b4c2f",
+        "tonalRamp": [
+          "#110a00",
+          "#302305",
+          "#4e4023",
+          "#6f5f41",
+          "#908062",
+          "#b4a383",
+          "#d8c7a6",
+          "#feeccb"
+        ]
+      },
+      "tool-teal": {
+        "role": "tertiary",
+        "displayName": "Web Teal",
+        "canonical": "oklch(72.3% 0.092 206.3)",
+        "sourceHex": "#56B6C2",
+        "tonalRamp": [
+          "#000e10",
+          "#022b2f",
+          "#044b53",
+          "#0e6e78",
+          "#2c929d",
+          "#55b5c1",
+          "#7cdae7",
+          "#c9f9ff"
+        ]
+      },
+      "tool-green": {
+        "role": "tertiary",
+        "displayName": "Plan Green",
+        "canonical": "oklch(76.8% 0.110 133.0)",
+        "sourceHex": "#98C379",
+        "tonalRamp": [
+          "#050f00",
+          "#162c02",
+          "#2a4d04",
+          "#476e26",
+          "#689048",
+          "#8ab46b",
+          "#add98e",
+          "#d2ffb2"
+        ]
+      },
+      "tool-grey": {
+        "role": "tertiary",
+        "displayName": "Fallback Grey",
+        "canonical": "oklch(66.7% 0.031 261.4)",
+        "sourceHex": "#8A95A8",
+        "tonalRamp": [
+          "#050b18",
+          "#1d2534",
+          "#394253",
+          "#586273",
+          "#788395",
+          "#9aa6b9",
+          "#becade",
+          "#e6effe"
+        ]
+      },
+      "added-green": {
+        "role": "tertiary",
+        "displayName": "Added Green",
+        "canonical": "oklch(71.7% 0.100 159.2)",
+        "sourceHex": "#68b78d",
+        "tonalRamp": [
+          "#000f06",
+          "#032d1b",
+          "#074f31",
+          "#1e724c",
+          "#45956c",
+          "#69b88e",
+          "#8edeb2",
+          "#c5fedd"
+        ]
+      },
+      "removed-red": {
+        "role": "tertiary",
+        "displayName": "Removed Red",
+        "canonical": "oklch(71.6% 0.132 19.7)",
+        "sourceHex": "#ea7f81",
+        "tonalRamp": [
+          "#1e0003",
+          "#4b020f",
+          "#791623",
+          "#9e3b41",
+          "#c55e61",
+          "#ec8183",
+          "#ffb2b1",
+          "#ffe8e8"
+        ]
+      },
+      "added-band": {
+        "role": "tertiary",
+        "displayName": "Added Band",
+        "canonical": "oklch(34.8% 0.044 158.0)",
+        "sourceHex": "#254131",
+        "tonalRamp": [
+          "#000f06",
+          "#102c1d",
+          "#2d4939",
+          "#4c6958",
+          "#6c8b78",
+          "#8fae9b",
+          "#b2d2be",
+          "#d7f8e3"
+        ]
+      },
+      "error-band": {
+        "role": "tertiary",
+        "displayName": "Error Band",
+        "canonical": "oklch(34.8% 0.075 19.3)",
+        "sourceHex": "#5b282a",
+        "tonalRamp": [
+          "#1e0003",
+          "#421216",
+          "#643032",
+          "#874f50",
+          "#ab7070",
+          "#d09292",
+          "#f6b6b6",
+          "#ffe8e8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "The page's only display line: the product name, lowercase, at the top of the masthead."
+      },
+      "headline": {
+        "displayName": "Direction Title",
+        "purpose": "One per candidate section, carrying the two-digit index and the direction name."
+      },
+      "body": {
+        "displayName": "Page Voice",
+        "purpose": "Thesis paragraphs, spec values, page footer copy."
+      },
+      "label": {
+        "displayName": "Micro Label",
+        "purpose": "Uppercase tracked labels: spec keys, coverage heading, index heading fallback, stamps."
+      },
+      "mono": {
+        "displayName": "Terminal Material",
+        "purpose": "Every pixel inside a terminal frame: rows, previews, diffs, composer, status bar."
+      },
+      "headline-small": {
+        "displayName": "Direction Title (small)",
+        "purpose": "The direction title at 700px and below."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "reveal",
+        "value": "grid-template-rows 0fr -> 1fr, 300ms cubic-bezier(.2,.8,.2,1)",
+        "purpose": "A collapsed transcript row opening to its hidden lines, the page's one authored motion."
+      },
+      {
+        "name": "caret-blink",
+        "value": "opacity 1 -> 0, 1.15s steps(1,end) infinite",
+        "purpose": "The composer caret, the only thing on the page that moves on its own."
+      },
+      {
+        "name": "state",
+        "value": "150ms ease",
+        "purpose": "Hover and focus on index links and expand controls."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "index-collapse",
+        "value": "1000px"
+      },
+      {
+        "name": "density-down",
+        "value": "700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Terminal Frame",
+      "kind": "custom",
+      "refersTo": "frame",
+      "description": "The terminal viewport that holds one direction's full 20-case transcript.",
+      "html": "<figure class=\"ds-frame\"><div class=\"ds-frame-bar\"><span class=\"ds-frame-id\">pi / squint render lab / Badge</span><span class=\"ds-frame-rt\">mock · dark · 132×44</span></div><div class=\"ds-frame-body\">transcript rows</div></figure>",
+      "css": ".ds-frame{background:#191c22;border:1px solid #2b3038;border-radius:3px;overflow:hidden;max-width:1040px;font-family:\"JetBrains Mono\",ui-monospace,Menlo,monospace}.ds-frame-bar{display:flex;justify-content:space-between;gap:16px;padding:8px 13px;border-bottom:1px solid #2b3038;background:#1b1e25;font:600 11px/1 \"Schibsted Grotesk\",system-ui,sans-serif;letter-spacing:.04em;color:#7e888e}.ds-frame-bar .ds-frame-rt{font-family:\"JetBrains Mono\",monospace;font-weight:400}.ds-frame-body{padding:16px 13px 12px}"
+    },
+    {
+      "name": "Badge Chip",
+      "kind": "chip",
+      "refersTo": "chip-tool",
+      "description": "The incumbent rendering's one loud element: a filled label carrying the tool category, never the state.",
+      "html": "<span class=\"ds-chip\" style=\"background:#4D9ABF\">READ</span> <span class=\"ds-chip-sum\">extensions/squint/index.ts</span>",
+      "css": ".ds-chip{display:inline-block;background:#4D9ABF;color:#181a20;font:700 12px/1.5 \"JetBrains Mono\",monospace;padding:0 5px;border-radius:1px;letter-spacing:.02em}.ds-chip-sum{margin-left:8px;color:#dee0e1;font:400 12.5px/1.62 \"JetBrains Mono\",monospace}"
+    },
+    {
+      "name": "Transcript Row",
+      "kind": "custom",
+      "refersTo": "row",
+      "description": "One tool call: a full-width button header, an always-visible preview slice, and the hidden remainder behind the reveal.",
+      "html": "<div class=\"ds-row\"><button class=\"ds-row-head\" aria-expanded=\"false\"><span class=\"ds-chip\" style=\"background:#4D9ABF\">READ</span><span class=\"ds-chip-sum\">logic.ts</span></button><div class=\"ds-row-pre\"><span>190#XXMT:export function previewLines(</span><span>191#YYNU:\treturn { shown: list.slice(0, limit) };</span></div><span class=\"ds-row-hint\">+34 more · click to expand</span></div>",
+      "css": ".ds-row{padding:1px 0}.ds-row-head{display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer}.ds-row-pre{display:flex;flex-direction:column;padding-left:7ch;color:#9da5a9;font:400 12.5px/1.62 \"JetBrains Mono\",monospace}.ds-row-pre span{white-space:pre;overflow:hidden;text-overflow:ellipsis}.ds-row-hint{display:block;padding-left:7ch;padding-top:2px;color:#7e888e;font:400 11.5px/1.6 \"JetBrains Mono\",monospace}.ds-row-head:focus-visible{outline:2px solid #a798d7;outline-offset:3px}"
+    },
+    {
+      "name": "Ledger Row",
+      "kind": "custom",
+      "refersTo": "ledger-row",
+      "description": "The density extreme: one aligned row per call, mark / label / target / count / time, and nothing else until it is opened.",
+      "html": "<div class=\"ds-ledger\" style=\"--tk:#98C379\"><button class=\"ds-ledger-head\" aria-expanded=\"false\"><span class=\"ds-ledger-mk\"></span><span class=\"ds-ledger-lab\">READ</span><span class=\"ds-ledger-sum\">extensions/squint/index.ts</span><span class=\"ds-ledger-cnt\">42 lines</span><span class=\"ds-ledger-tm\">0.3s</span></button></div>",
+      "css": ".ds-ledger-head{display:grid;grid-template-columns:2.4ch 7ch minmax(0,1fr) 7ch 6ch;gap:0 10px;align-items:baseline;width:100%;text-align:left;background:none;border:0;padding:0 6px;border-radius:2px;font:400 12.5px/1.75 \"JetBrains Mono\",monospace;color:inherit;cursor:pointer}.ds-ledger-head:hover{background:#1f232b}.ds-ledger-mk{width:7px;height:7px;border-radius:1px;background:var(--tk);align-self:center;justify-self:center}.ds-ledger-lab{color:var(--tk);font-weight:600;letter-spacing:.05em}.ds-ledger-sum{color:#dee0e1;white-space:pre;overflow:hidden;text-overflow:ellipsis}.ds-ledger-cnt,.ds-ledger-tm{color:#7e888e;text-align:right}"
+    },
+    {
+      "name": "Gutter Row",
+      "kind": "custom",
+      "refersTo": "gutter-row",
+      "description": "A typographic column instead of a chip: fixed-width label cell, target cell, right meta; output hangs off a 1px rule aligned to the target column.",
+      "html": "<div class=\"ds-gutter\" style=\"--tk:#4D9ABF\"><button class=\"ds-gutter-head\" aria-expanded=\"false\"><span class=\"ds-gutter-gc\">READ</span><span class=\"ds-gutter-sum\">extensions/squint/index.ts</span><span class=\"ds-gutter-meta\">42 lines</span></button><div class=\"ds-gutter-pre\"><span>190#XXMT:export function previewLines(</span></div></div>",
+      "css": ".ds-gutter-head{display:grid;grid-template-columns:8ch minmax(0,1fr) auto;gap:0 10px;align-items:baseline;width:100%;text-align:left;background:none;border:0;padding:0;font:400 12.5px/1.7 \"JetBrains Mono\",monospace;color:inherit;cursor:pointer}.ds-gutter-gc{color:var(--tk);font-size:11.5px;font-weight:600;letter-spacing:.06em}.ds-gutter-sum{color:#dee0e1;white-space:pre;overflow:hidden;text-overflow:ellipsis}.ds-gutter-meta{color:#7e888e;font-size:11.5px}.ds-gutter-pre{margin-left:calc(8ch + 10px);border-left:1px solid color-mix(in oklab, var(--tk) 30%, transparent);padding-left:11px;color:#9da5a9;font:400 12.5px/1.62 \"JetBrains Mono\",monospace;display:flex;flex-direction:column}"
+    },
+    {
+      "name": "Deck Panel",
+      "kind": "card",
+      "refersTo": "deck-panel",
+      "description": "Each call boxed: status dot, label, target, stats in the header, output inside, and a nested call as a box inside its parent's box.",
+      "html": "<div class=\"ds-deck\" style=\"--tk:#56B6C2\"><div class=\"ds-deck-panel\"><button class=\"ds-deck-head\" aria-expanded=\"false\"><span class=\"ds-deck-dot\"></span><span class=\"ds-deck-dh\"><span class=\"ds-deck-lab\">READ</span><span class=\"ds-deck-sum\">index.ts</span></span><span class=\"ds-deck-meta\">42 lines · 0.3s</span></button><div class=\"ds-deck-pre\"><span>39#BRBH:const COLLAPSED = {</span></div></div></div>",
+      "css": ".ds-deck{padding:5px 0;font-family:\"JetBrains Mono\",monospace}.ds-deck-panel{border:1px solid #2b3038;border-radius:2px;overflow:hidden;background:#1b1f26}.ds-deck-head{display:grid;grid-template-columns:3ch minmax(0,1fr) auto;gap:0 10px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #2b3038;padding:7px 11px;color:inherit;cursor:pointer}.ds-deck-dot{width:7px;height:7px;border-radius:50%;background:var(--tk);align-self:center;margin-left:2px}.ds-deck-dh{display:flex;gap:9px;align-items:baseline;min-width:0}.ds-deck-lab{color:var(--tk);font-size:11.5px;font-weight:600;letter-spacing:.05em}.ds-deck-sum{color:#dee0e1;font-size:12.5px;white-space:pre;overflow:hidden;text-overflow:ellipsis}.ds-deck-meta{color:#7e888e;font-size:11.5px}.ds-deck-pre{padding:8px 12px 6px;color:#9da5a9;font-size:12px;display:flex;flex-direction:column}"
+    },
+    {
+      "name": "Rail Node",
+      "kind": "custom",
+      "refersTo": "rail-node",
+      "description": "A call as a node on one continuous trace spine; nested work hangs off its parent with an elbow, which is the only way a subagent's shape is visible at a glance.",
+      "html": "<div class=\"ds-rail\" style=\"--tk:#9D7CD8\"><button class=\"ds-rail-head\" aria-expanded=\"false\"><span class=\"ds-rail-node\"></span><span class=\"ds-rail-rh\"><span class=\"ds-rail-lab\">AGENT</span><span class=\"ds-rail-sum\">review-team · correctness</span></span><span class=\"ds-rail-meta\">3 tools · 12.4s</span></button></div>",
+      "css": ".ds-rail{position:relative;padding-left:2.6ch;font-family:\"JetBrains Mono\",monospace}.ds-rail::before{content:\"\";position:absolute;left:5.5px;top:0;bottom:0;width:1px;background:#2b3038}.ds-rail-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 14px;align-items:baseline;width:100%;text-align:left;background:none;border:0;padding:0 0 0 1.6ch;font:400 12.5px/1.8 \"JetBrains Mono\",monospace;color:inherit;cursor:pointer}.ds-rail-node{position:absolute;left:0;top:.62em;width:11px;height:11px;border-radius:50%;background:#191c22;border:1px solid var(--tk);display:grid;place-items:center}.ds-rail-node::after{content:\"\";width:5px;height:5px;border-radius:50%;background:var(--tk)}.ds-rail-rh{display:flex;gap:10px;align-items:baseline;min-width:0}.ds-rail-lab{color:var(--tk);font-size:11.5px;font-weight:600;letter-spacing:.05em}.ds-rail-sum{color:#dee0e1;white-space:pre;overflow:hidden;text-overflow:ellipsis}.ds-rail-meta{color:#7e888e;font-size:11.5px}"
+    },
+    {
+      "name": "Diff Band",
+      "kind": "custom",
+      "refersTo": "diff-band",
+      "description": "The one place a row is allowed to paint a full-bleed tint: an edit's changed lines, band from the indent column to the frame's edge, with context hidden until the row opens.",
+      "html": "<div class=\"ds-diff\" style=\"--ind:7ch\"><span class=\"ds-diff-line ds-diff-add\">+\tread: 8,</span><span class=\"ds-diff-line ds-diff-del\">-\tread: 6,</span><span class=\"ds-diff-line ds-diff-ctx\">\tgrep: 8,</span></div>",
+      "css": ".ds-diff{display:flex;flex-direction:column;margin-left:var(--ind);font-family:\"JetBrains Mono\",monospace}.ds-diff-line{display:block;padding:0 13px 0 1ch;margin-right:-13px;white-space:pre;overflow:hidden;text-overflow:ellipsis;font:400 12.5px/1.62 \"JetBrains Mono\",monospace}.ds-diff-add{color:#68b78d;background:#254131}.ds-diff-del{color:#ea7f81;background:#5b282a}.ds-diff-ctx{color:#9da5a9;background:#34383a}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Render Lab",
+    "overview": "A dark bench where one specimen — a single pi transcript — is examined under five different instruments. The page is not the product and never pretends to be: it is chrome, rules, and labels, and every colour with a point of view lives inside a frame, in the mock terminal itself.\n\nThe system is built on two registers that never mix. Outside a frame: near-black ground, hairline rules, one violet accent, and a grotesk voice that carries the argument in prose. Inside a frame: pi's real theme tokens, a monospace face, filled tinted bands, and the tool palette. A page element that borrows a tool colour is a bug, not a highlight — the frame is where colour earns its meaning.\n\nDensity is the subject, so the system refuses decoration that would tilt the comparison: no gradients, no glass, no shadow, no radius above 3px, no glyph standing in for a line of text. What is left is alignment, contrast, and the honesty of a mock labelled as a mock.",
+    "keyCharacteristics": [
+      "One violet accent owns all page chrome; the tool palette exists only inside frames",
+      "Hairline borders and 2px radii; depth comes from tonal steps, never shadows",
+      "Monospace is material, not costume: it appears only where a terminal is being shown",
+      "Every direction renders the identical 20-case transcript, so differences are design, never content",
+      "Collapsed rows always reveal their hidden count; a row with nothing to open carries no affordance"
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Page chrome carries violet (#a798d7) and nothing else. Read blue, write coral, shell gold, and the diff pair are reserved for the inside of a terminal frame; using one on the page is a leak, not a highlight.",
+        "section": "colors"
+      },
+      {
+        "name": "The Printed Chip Rule",
+        "body": "A filled chip's text is Chip Ink (#181a20), never white. A chip is a printed label at reading size, not a glowing badge.",
+        "section": "colors"
+      },
+      {
+        "name": "The Label Floor Rule",
+        "body": "Uppercase tracked micro-labels are 11px minimum and never run past a couple of words; anything longer is set in sentence case at body size.",
+        "section": "typography"
+      },
+      {
+        "name": "The Costume Rule",
+        "body": "Monospace appears only where a terminal is being shown. Using it for page chrome or a technical-sounding heading is costume.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at every state. Depth is a tonal step plus a 1px hairline, never a shadow or a blur.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Same-Transcript Rule",
+        "body": "Every direction renders the identical case array. A direction that drops a case, softens an error, or shortens the 400-line read is not a direction.",
+        "section": "components"
+      },
+      {
+        "name": "The Nothing-To-Open Rule",
+        "body": "A collapsed row shows +N more only when N exists, and a row with no hidden content carries no expand affordance at all.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do keep every colour decision inside a frame tied to a tool category or a diff role.",
+      "Do keep a hidden-count hint on every row that has hidden content, and drop it from rows that have none.",
+      "Do express depth with the tonal steps already in the ramp — black, panel, frame, bar, nested, hover — before reaching for anything else.",
+      "Do label every frame a mock, in its bar and in the page footer.",
+      "Do keep the collapsed edit rule the extension's: changed lines only, context on open."
+    ],
+    "donts": [
+      "Don't paint page chrome with a tool tone, or a frame with the page accent.",
+      "Don't add a gradient, blur, or shadow to a frame that is being compared against a real terminal.",
+      "Don't round a frame or chip past 3px, or draw a border-left thicker than 1px on a row.",
+      "Don't let a direction omit a case, soften an error, or trim the 400-line read.",
+      "Don't let a rule, spine, or column drift out of alignment with the column it serves — alignment is the only ornament this system has."
+    ]
+  }
+}

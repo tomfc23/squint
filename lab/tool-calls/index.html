@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>squint — five ways to render one pi session</title>
+<meta name="description" content="Render candidates for the squint pi TUI extension: the same transcript drawn five ways.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%23a798d7'/%3E%3Crect x='3' y='5' width='10' height='1.6' fill='%2314161b'/%3E%3Crect x='3' y='9.4' width='6' height='1.6' fill='%2314161b'/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:"Schibsted Grotesk";font-style:normal;font-weight:400 900;font-display:swap;src:url("../fonts/schibsted-grotesk.woff2") format("woff2");}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:400 700;font-display:swap;src:url("../fonts/jetbrains-mono.woff2") format("woff2");}
+
+
+:root{
+  --ground:#14161b;
+  --panel:#1b1e25;        /* frame bar + deck panel */
+  --term-bg:#191c22;       /* frame body */
+  --term-foot:#171a20;     /* composer + status bar */
+  --term-kid:#161a20;      /* nested child rows */
+  --term-hover:#1f232b;
+  --term-line:#2b3038;
+  --term-line-2:#3a414b;
+  --text:#dee0e1;
+  --muted:#9da5a9;
+  --dim:#7e888e;
+  --accent:#a798d7;
+  --blue:#4D9ABF; --coral:#F09082; --gold:#F1BE58; --violet:#9D7CD8;
+  --teal:#56B6C2; --green:#98C379; --gray:#8A95A8;
+  --add:#68b78d; --del:#ea7f81; --add-bg:#254131; --del-bg:#5b282a; --pending-bg:#34383a;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Schibsted Grotesk",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --r:2px;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --headline-small:24px;   /* the direction title at <=700px */
+  --gold-border:#5b4c2f;   /* the one warm border, on the theme stamp */
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--ground);color:var(--text);
+  font:400 15px/1.6 var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:color-mix(in oklab, var(--accent) 34%, var(--ground));color:var(--text)}
+a{color:var(--accent);text-underline-offset:3px;text-decoration-thickness:1px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:var(--r)}
+.skip{position:absolute;left:-9999px;top:0;z-index:9;background:var(--accent);color:var(--ground);font:600 12px/1 var(--sans);padding:10px 14px;border-radius:0 0 2px 0}
+.skip:focus{left:0}
+
+/* ---------- masthead ---------- */
+.masthead{max-width:1340px;margin:0 auto;padding:44px 28px 26px}
+.mast{display:flex;flex-wrap:wrap;gap:26px 44px;align-items:flex-end;justify-content:space-between}
+.wordmark{font:800 clamp(40px,7vw,74px)/0.86 var(--sans);letter-spacing:-0.045em;margin:0;text-transform:lowercase}
+.wordmark em{font-style:normal;color:var(--accent)}
+.claim{font:400 17px/1.45 var(--sans);color:var(--muted);margin:14px 0 0;max-width:58ch;text-wrap:balance}
+.claim b{color:var(--text);font-weight:600}
+.mast-side{display:flex;flex-direction:column;gap:11px;align-items:flex-start}
+.stamp{font:600 11px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);border:1px solid var(--term-line-2);border-radius:var(--r);padding:6px 9px}
+.stamp.hot{color:var(--gold);border-color:var(--gold-border)}
+.bulk{display:flex;gap:8px}
+.bulk button,.expand-all{
+  font:500 11px/1 var(--sans);letter-spacing:.03em;
+  background:transparent;color:var(--muted);
+  border:1px solid var(--term-line-2);border-radius:var(--r);
+  padding:7px 11px;cursor:pointer;transition:color .15s,border-color .15s,background .15s;
+}
+.bulk button:hover,.expand-all:hover{color:var(--text);border-color:#586069;background:#1e2229}
+.coverage{margin:26px 0 0;padding:0 0 22px;border-bottom:1px solid var(--term-line)}
+.coverage h2{font:600 11px/1.6 var(--sans);letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.coverage ul{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0;padding:0;list-style:none}
+.coverage li{font:400 12px/1.6 var(--mono);color:var(--muted)}
+.coverage li.danger{color:var(--del)}
+
+/* ---------- shell ---------- */
+.shell{max-width:1340px;margin:0 auto;padding:0 28px 90px;display:grid;grid-template-columns:214px minmax(0,1fr);gap:44px;align-items:start}
+.index{position:sticky;top:24px;padding-top:30px;display:flex;flex-direction:column;gap:2px}
+.index h2{font:600 12px/1 var(--sans);letter-spacing:.02em;color:var(--muted);margin:0 0 12px}
+.index a{
+  display:grid;grid-template-columns:2.2ch 1fr;gap:8px;align-items:baseline;
+  color:var(--muted);text-decoration:none;padding:8px 9px;border-radius:var(--r);
+  transition:background .15s,color .15s;
+}
+.index a:hover{background:#1a1e25;color:var(--text)}
+.index a.on{background:#1e2230;color:var(--text)}
+.index a.on .n{color:var(--accent)}
+.index .n{font:500 11px/1.5 var(--mono);color:var(--dim)}
+.index .t{font:600 13px/1.35 var(--sans)}
+.index .t small{display:block;font:400 11px/1.35 var(--sans);color:var(--dim);margin-top:3px}
+
+/* ---------- candidate ---------- */
+.stage{display:flex;flex-direction:column;gap:64px;min-width:0}
+.cand{padding-top:30px;min-width:0}
+.cand-title{font:700 30px/1.05 var(--sans);letter-spacing:-0.03em;margin:0;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.cand-title .num{font:500 12px/1 var(--mono);color:var(--dim);letter-spacing:.04em}
+.tag{font:600 11px/1 var(--sans);letter-spacing:.11em;text-transform:uppercase;padding:5px 8px;border-radius:var(--r);color:var(--ground);background:var(--accent)}
+.cand-thesis{font:400 15px/1.55 var(--sans);color:var(--muted);margin:12px 0 0;max-width:74ch}
+.cand-thesis strong{color:var(--text);font-weight:600}
+.specs{display:flex;flex-wrap:wrap;gap:10px 34px;margin:20px 0 22px;padding:14px 0 0;border-top:1px solid var(--term-line)}
+.specs>div{display:flex;flex-direction:column;gap:5px}
+.specs dt{font:600 11px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.specs dd{font:400 12.5px/1.4 var(--sans);color:var(--muted);margin:0;max-width:32ch}
+.pips{display:flex;gap:4px;align-items:center}
+.pips i{width:12px;height:6px;border-radius:1px;background:#2b3038}
+.pips i.on{background:var(--accent)}
+
+/* ---------- terminal frame ---------- */
+.term{
+  background:var(--term-bg);border:1px solid var(--term-line);border-radius:3px;
+  overflow:hidden;max-width:1040px;
+}
+.term-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:8px 13px;border-bottom:1px solid var(--term-line);background:#1b1e25}
+.term-bar .id{display:flex;align-items:center;gap:7px;font:600 11px/1 var(--sans);letter-spacing:.04em;color:var(--dim)}
+.term-bar .id b{color:var(--text);font-weight:700}
+.term-bar .id span{color:var(--term-line-2)}
+.term-bar .rt{font:400 11px/1 var(--mono);color:var(--dim)}
+.transcript{padding:16px 0 12px}
+.rows{padding:0 13px}
+
+/* turn */
+.umsg{display:grid;grid-template-columns:2ch minmax(0,1fr);gap:0 8px;margin:0 13px 14px;font:400 12.5px/1.65 var(--mono)}
+.umsg .g{color:var(--accent);opacity:.8}
+.umsg .b{color:var(--text);background:#213b49;border-radius:var(--r);padding:5px 9px;white-space:pre-wrap;min-width:0}
+.amsg{margin:0 13px 12px;font:400 12.5px/1.65 var(--mono);color:#c9ccd4;max-width:96ch}
+.amsg code{color:var(--violet);background:#242833;padding:1px 4px;border-radius:2px}
+.amsg .dim{color:var(--dim)}
+
+/* generic row */
+.row{padding:1px 0}
+.row-head{display:block;width:100%;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer}
+.row-head[tabindex="-1"]{cursor:default}
+.pre{display:flex;flex-direction:column;font:400 12.5px/1.62 var(--mono);color:var(--muted)}
+.pre span{white-space:pre;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.more{display:grid;grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows .3s var(--ease),visibility 0s .3s}
+.more>div{overflow:hidden;min-height:0}
+.row.open .more{grid-template-rows:1fr;visibility:visible;transition:grid-template-rows .3s var(--ease),visibility 0s 0s}
+.row:not(.open) .ctx{display:none}
+.hint{font:400 11.5px/1.6 var(--mono);color:var(--dim);padding-top:2px;display:block}
+.hint .c{display:none}
+.row.open>.hint .x{display:none}
+.row.open>.hint .c{display:inline}
+kbd{font:500 10.5px/1 var(--mono);color:var(--muted);border:1px solid var(--term-line-2);border-radius:var(--r);padding:2px 4px;background:#20242c}
+.sum{min-width:0}
+
+/* 01 badge — the incumbent */
+.badge>.pre:not(.dwrap),.badge>.hint{padding-left:var(--ind)}
+.badge .row-head{display:flex;gap:8px;align-items:baseline;min-width:0}
+.ch{font:700 12px/1.5 var(--mono);padding:0 5px;border-radius:1px;color:#181a20;letter-spacing:.02em;flex:none}
+.badge .sum{font:400 12.5px/1.62 var(--mono);color:var(--text);white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.badge .dwrap{display:flex;flex-direction:column;font:400 12.5px/1.62 var(--mono);margin-left:var(--ind)}
+.fill{display:block;font:400 12.5px/1.62 var(--mono);padding:0 13px 0 1ch;margin-right:-13px;white-space:pre;overflow:hidden;text-overflow:ellipsis}
+/* a nested tool call, shared by every direction that is not the rail */
+.kid{position:relative;margin:6px 0 6px 2.6ch;padding-left:1.6ch;border-left:1px solid color-mix(in oklab, var(--term-line) 62%, var(--term-bg))}
+.kid-head{display:flex;gap:9px;align-items:baseline;min-width:0}
+.kid-lab{color:var(--tk);font:600 11.5px/1.7 var(--mono);letter-spacing:.05em;flex:none}
+.kid-sum{color:var(--muted);font:400 12px/1.7 var(--mono);white-space:pre;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.kid .pre{padding-left:1ch;font-size:12px}
+.stats{display:block;font:400 11.5px/1.6 var(--mono);color:var(--dim);padding-left:var(--ind)}
+
+/* 02 ledger */
+.row.ledger{padding:0}
+.row.ledger .row-head{
+  display:grid;grid-template-columns:2.4ch 7ch minmax(0,1fr) 7ch 6ch 1.4ch;
+  gap:0 10px;align-items:baseline;
+  font:400 12.5px/1.75 var(--mono);padding:0 6px;border-radius:var(--r);transition:background .12s;
+}
+.row.ledger .row-head:hover,.row.ledger.open .row-head{background:#1f232b}
+.row.ledger .mk{width:7px;height:7px;border-radius:1px;background:var(--tk);align-self:center;justify-self:center}
+.row.ledger .mk.pend{background:none;box-shadow:inset 0 0 0 1px var(--tk)}
+.row.ledger .mk.err{background:var(--del)}
+.row.ledger .lab{color:var(--tk);letter-spacing:.05em;font-weight:600}
+.row.ledger .sum{color:var(--text);white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.row.ledger .cnt{color:var(--dim);text-align:right}
+.row.ledger .tm{color:var(--dim);text-align:right}
+.row.ledger .cv{width:6px;height:6px;border-right:1px solid var(--dim);border-bottom:1px solid var(--dim);rotate:-45deg;align-self:center;justify-self:center;transition:rotate .2s var(--ease)}
+.row.ledger.open .cv{rotate:45deg;border-color:var(--muted)}
+.row.ledger .body{padding:2px 6px 9px;margin-left:1.1ch;border-left:1px solid var(--term-line)}
+.row.ledger .pre{border-left:0;padding-left:10px}
+.row.ledger .hint{padding-left:calc(1.1ch + 10px)}
+.row.ledger .err-line{color:var(--del)}
+
+/* 03 gutter */
+.row.gutter .row-head{
+  display:grid;grid-template-columns:8ch minmax(0,1fr) auto;
+  gap:0 10px;align-items:baseline;font:400 12.5px/1.7 var(--mono);
+}
+.row.gutter .gc{color:var(--tk);letter-spacing:.06em;font-weight:600;font-size:11.5px}
+.row.gutter .sum{color:var(--text);white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.row.gutter .meta{color:var(--dim);font-size:11.5px;white-space:nowrap}
+.row.gutter .pre{margin-left:calc(8ch + 10px);border-left:1px solid var(--tk-line);padding-left:11px}
+.row.gutter>.hint{margin-left:calc(8ch + 10px);border-left:1px solid var(--tk-line);padding-left:11px}
+.row.gutter .dline.a{color:var(--add)}
+.row.gutter .dline.d{color:var(--del)}
+
+/* 04 deck */
+.row.deck{padding:5px 0}
+.row.deck .panel{border:1px solid var(--term-line);border-radius:var(--r);overflow:hidden;background:#1b1f26}
+.row.deck.open .panel{border-color:var(--term-line-2)}
+.row.deck .panel.err{border-color:color-mix(in oklab, var(--del) 46%, var(--ground))}
+.row.deck .row-head{display:grid;grid-template-columns:3ch minmax(0,1fr) auto;gap:0 10px;align-items:baseline;padding:7px 11px;border-bottom:1px solid transparent}
+.row.deck .row-head{border-bottom-color:var(--term-line)}
+.row.deck .panel.err .row-head{background:color-mix(in oklab, var(--del) 24%, var(--ground))}
+.row.deck .dot{width:7px;height:7px;border-radius:50%;background:var(--tk);align-self:center;justify-self:start;margin-left:2px}
+.row.deck .dot.pend{background:none;box-shadow:inset 0 0 0 1px var(--tk)}
+.row.deck .dot.err{background:var(--del)}
+.row.deck .dh{display:flex;gap:9px;align-items:baseline;min-width:0}
+.row.deck .lab{color:var(--tk);font:600 11.5px/1.7 var(--mono);letter-spacing:.05em;flex:none}
+.row.deck .sum{color:var(--text);font:400 12.5px/1.7 var(--mono);white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.row.deck .meta{color:var(--dim);font:400 11.5px/1.7 var(--mono);white-space:nowrap}
+.row.deck .pre{padding:8px 12px 6px;font-size:12px}
+.row.deck>.hint{padding:0 12px 9px}
+.row.deck .kid{border:1px solid color-mix(in oklab, var(--term-line) 62%, var(--term-bg));border-radius:var(--r);margin:8px 12px 8px 22px;background:transparent}
+.row.deck .kid .row-head{grid-template-columns:2ch minmax(0,1fr) auto;padding:6px 10px}
+.row.deck .kid .dot{width:6px;height:6px}
+.row.deck .kid .pre{padding:6px 10px 4px;font-size:11.5px}
+.row.deck .dline.a{color:var(--add)}
+.row.deck .dline.d{color:var(--del)}
+
+/* 05 rail */
+.row.rail{position:relative;padding-left:2.6ch}
+.row.rail::before{content:"";position:absolute;left:5.5px;top:0;bottom:0;width:1px;background:var(--term-line)}
+.row.rail:last-child::before{bottom:50%}
+.row.rail .row-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 14px;align-items:baseline;font:400 12.5px/1.8 var(--mono);padding-left:1.6ch}
+.row.rail .node{position:absolute;left:0;top:.62em;width:11px;height:11px;border-radius:50%;background:var(--term-bg);border:1px solid var(--tk);display:grid;place-items:center}
+.row.rail .node i{width:5px;height:5px;border-radius:50%;background:var(--tk)}
+.row.rail .node.pend i{background:none}
+.row.rail .node.err{border-color:var(--del)}
+.row.rail .node.err i{background:var(--del)}
+.row.rail .rh{display:flex;gap:10px;align-items:baseline;min-width:0}
+.row.rail .lab{color:var(--tk);font-weight:600;letter-spacing:.05em;font-size:11.5px;flex:none}
+.row.rail .sum{color:var(--text);white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.row.rail .meta{color:var(--dim);font-size:11.5px;white-space:nowrap}
+.row.rail .pre{padding-left:1.6ch;margin-left:1.9ch;border-left:1px solid var(--term-line)}
+.row.rail>.hint{padding-left:3.5ch}
+.row.rail .kid{padding-left:2.2ch;position:relative}
+.row.rail .kid::before{content:"";position:absolute;left:.55ch;top:0;bottom:0;width:1px;background:var(--term-line)}
+.row.rail .kid .elbow{position:absolute;left:.55ch;top:.85em;width:1.4ch;height:1px;background:var(--term-line)}
+.row.rail .dline.a{color:var(--add)}
+.row.rail .dline.d{color:var(--del)}
+.row.rail .dline.e{color:var(--del)}
+
+/* composer + footer */
+.composer{padding:12px 13px 10px;border-top:1px solid var(--term-line);background:#171a20}
+.box{display:flex;gap:9px;align-items:center;border:1px solid var(--term-line-2);border-radius:var(--r);padding:9px 11px;background:var(--term-bg)}
+.box .pr{color:var(--accent);font:500 12.5px/1 var(--mono)}
+.box .ph{color:var(--dim);font:400 12.5px/1 var(--mono)}
+.caret{width:7px;height:14px;background:var(--accent);margin-left:1px;animation:blink 1.15s steps(1,end) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.keys{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:9px;font:400 11px/1.6 var(--mono);color:var(--dim)}
+.keys b{color:var(--muted);font-weight:500}
+.term-foot{border-top:1px solid var(--term-line);padding:9px 13px 11px;background:#171a20;display:flex;flex-direction:column;gap:4px}
+.term-foot p{margin:0;font:400 11px/1.5 var(--mono);color:var(--dim);display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.term-foot .mu{color:var(--muted)}
+.bar{display:inline-block;width:120px;height:7px;background:#262b34;border-radius:1px;overflow:hidden;align-self:center}
+.bar i{display:block;height:100%;background:var(--green)}
+.bar.warn i{background:var(--gold)}
+.term-foot .ok{color:var(--green)}
+
+/* ---------- page footer ---------- */
+.pagefoot{max-width:1340px;margin:0 auto;padding:30px 28px 70px;border-top:1px solid var(--term-line);color:var(--dim);font:400 13px/1.6 var(--sans);display:flex;flex-wrap:wrap;gap:10px 30px;justify-content:space-between}
+.pagefoot p{margin:0;max-width:70ch}
+.pagefoot b{color:var(--muted);font-weight:600}
+
+@media (max-width:1000px){
+  .shell{grid-template-columns:1fr;gap:0}
+  .index{position:static;flex-direction:row;flex-wrap:wrap;gap:6px;padding:10px 0 18px}
+  .index h2{width:100%;margin-bottom:4px}
+  .index a{grid-template-columns:auto 1fr;border:1px solid var(--term-line);padding:6px 10px}
+  .index a .t small{display:none}
+}
+@media (max-width:700px){
+  .masthead{padding:30px 16px 18px}
+  .shell{padding:0 16px 60px}
+  .pagefoot{padding:24px 16px 50px}
+  .cand-title{font-size:var(--headline-small)}
+  .pre,.badge .sum,.amsg,.umsg{font-size:11px;line-height:1.55}
+  .fill,.stats{font-size:11px}
+  .row.ledger .row-head{font-size:11px;grid-template-columns:2.4ch 6ch minmax(0,1fr) 5ch 5ch 1.4ch;gap:0 6px}
+  .row.gutter .row-head{grid-template-columns:7ch minmax(0,1fr);gap:0 8px;font-size:11px}
+  .row.gutter .meta{grid-column:2}
+  .row.gutter .pre,.row.gutter>.hint{margin-left:calc(7ch + 8px)}
+  .row.deck .sum{font-size:11px}
+  .row.rail .row-head{font-size:11px}
+  .bar{width:74px}
+}
+@media (prefers-reduced-motion:reduce){
+  .caret{animation:none}
+  .more{transition:none}
+  .row.ledger .cv{transition:none}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#stage">Skip to the five directions</a>
+
+<header class="masthead">
+  <div class="mast">
+    <div>
+      <h1 class="wordmark">squ<em>i</em>nt</h1>
+      <p class="claim"><b>Five ways to render one pi session.</b> The same transcript — the same diff, the same failure, the same 400-line read — drawn five different ways, so the choice is about the information design and nothing else.</p>
+    </div>
+    <div class="mast-side">
+      <span class="stamp">Rendered mock</span>
+      <span class="stamp hot">pi <b>dark</b> theme</span>
+      <div class="bulk">
+        <button type="button" data-bulk="open">Expand every row</button>
+        <button type="button" data-bulk="close">Collapse</button>
+      </div>
+    </div>
+  </div>
+  <div class="coverage">
+    <h2>Cases in every frame (20)</h2>
+    <ul>
+      <li>think</li><li>read ×3</li><li class="danger">read error</li><li>read streaming</li><li>grep</li>
+      <li>find</li><li>ls</li><li>edit</li><li>write</li><li>shell ×2</li>
+      <li class="danger">shell exit 1</li><li>subagent + 3 children</li><li>web</li><li>todo</li>
+      <li>codemode</li><li>ask</li><li>mcp</li><li>goal</li>
+    </ul>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="index" aria-label="Directions">
+    <h2>Directions</h2>
+    <a href="#badge"><span class="n">01</span><span class="t">Badge<small>Ships today</small></span></a>
+    <a href="#ledger"><span class="n">02</span><span class="t">Ledger<small>One line per call</small></span></a>
+    <a href="#gutter"><span class="n">03</span><span class="t">Gutter<small>A column, not a chip</small></span></a>
+    <a href="#deck"><span class="n">04</span><span class="t">Deck<small>Each call boxed</small></span></a>
+    <a href="#rail"><span class="n">05</span><span class="t">Rail<small>A trace spine</small></span></a>
+  </nav>
+  <main class="stage" id="stage"></main>
+</div>
+
+<footer class="pagefoot">
+  <p><b>How to read this.</b> Nothing here is a screenshot: every frame is DOM, in pi's <b>dark</b> theme tokens, at the real extension's line formats. Click a row to open it, exactly as <kbd>⌘E</kbd> does in the extension.</p>
+  <p>Five directions · 20 cases each · <b>squint</b> render lab</p>
+</footer>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * The transcript. One array, rendered five times, so no direction can
+ * quietly drop a case.
+ * ------------------------------------------------------------------ */
+const TONE = {think:"violet",read:"blue",grep:"blue",find:"blue",ls:"blue",edit:"coral",write:"coral",shell:"gold",agent:"violet",web:"teal",todo:"green",code:"green",ask:"violet",other:"gray"};
+const VAR = {blue:"var(--blue)",coral:"var(--coral)",gold:"var(--gold)",violet:"var(--violet)",teal:"var(--teal)",green:"var(--green)",gray:"var(--gray)"};
+
+const CASES = [
+  { kind:"think", label:"THINK", summary:"", 
+    preview:[], more:[
+      "The extension classifies by tool name, then falls back to a badge label for",
+      "MCP tools. Collapsed counts run 4–10 lines per kind, so a 400-line read still",
+      "costs six lines of transcript. That trade is the whole extension."],
+    meta:{lines:"", time:"2.1s"} },
+
+  { kind:"read", label:"READ", summary:"extensions/squint/index.ts",
+    preview:[
+      " 39#BRBH:const COLLAPSED: Record<Kind, number> = {",
+      " 40#RPNH:\tread: 6,",
+      " 41#QHNT:\tgrep: 8,",
+      " 42#HMRX:\tfind: 8,",
+      " 43#VNTQ:\tls: 8,",
+      " 44#MXSY:\tedit: 10,",
+      " 45#TKPT:\twrite: 4,",
+      " 46#JHWX:\tshell: 8,"],
+    more:[
+      " 47#PMYW:\tagent: 4,",
+      " 48#QHNR:\tweb: 4,",
+      " 49#JQRB:\ttodo: 6,",
+      " 50#STVH:\task: 6,",
+      " 51#ZPZV:\tcode: 6,",
+      " 52#RSYZ:\tother: 6,",
+      " 53#QYSX:};"],
+    hidden:34, meta:{lines:"42 lines", time:"0.3s"} },
+
+  { kind:"read", label:"READ", summary:"install/…/theme/theme.js",
+    preview:[
+      "6943#AAQK:  // Export colors end up in CSS, which understands hex and",
+      "6944#BBRM:  // oklch() values directly but not okhsl().",
+      "6945#CCSN:  for (const [key, value] of Object.entries(theme.colors)) {",
+      "6946#DDTO:    const resolved = resolveVar(value, theme.vars);",
+      "6947#EEUP:    if (/^okhsl\\(/i.test(resolved)) {",
+      "6948#FFVQ:      out[key] = okhslToHex(resolved);"],
+    more:[
+      "6949#GGWR:    } else {",
+      "6950#HHXS:      out[key] = resolved;",
+      "6951#IIYT:    }",
+      "6952#JJZU:  }"],
+    hidden:394, meta:{lines:"400 lines", time:"1.4s"} },
+
+  { kind:"read", label:"READ", summary:"extensions/squint/missing.ts", error:true,
+    preview:[
+      "Error: ENOENT: no such file or directory, open",
+      "'extensions/squint/missing.ts'"],
+    more:["    at async readTool (tools/read.ts:88:11)",
+          "    at async runTool (agent/loop.ts:214:7)"],
+    hidden:2, meta:{lines:"error", time:"0.1s"} },
+
+  { kind:"read", label:"READ", summary:"dist/…/interactive-mode.js", pending:true,
+    preview:[], more:[
+      "2188#KKAA:  this.viewport.append(renderToolResult(result));",
+      "2189#LLBB:  requestRender();"],
+    hidden:2, meta:{lines:"streaming", time:"0.1s"} },
+
+  { kind:"grep", label:"GREP", summary:"/previewLines/ · extensions/**/*.ts",
+    preview:[
+      "extensions/squint/index.ts:171:  const { shown, hidden } = previewLines(toLines(body), errorLimit);",
+      "extensions/squint/index.ts:202:  const preview = tail ? tailLines(list, limit) : previewLines(list, limit);",
+      "extensions/squint/index.ts:203:  if (tail && preview.hidden > 0) {",
+      "extensions/squint/logic.ts:190:export function previewLines(list: string[], limit: number): Preview {",
+      "extensions/squint/logic.ts:191:\treturn { shown: list.slice(0, limit), hidden: Math.max(0, list.length - limit) };",
+      "extensions/squint/logic.test.ts:53:assert.deepEqual(previewLines([...], 2), …);"],
+    more:[
+      "extensions/squint/index.ts:200:  const list = toLines(body);",
+      "extensions/squint/index.ts:210:  const hint = tip(theme, expanded, tail ? 0 : preview.hidden, keyTarget);"],
+    hidden:6, meta:{lines:"12 matches", time:"0.2s"} },
+
+  { kind:"find", label:"FIND", summary:"**/*.test.ts",
+    preview:[
+      "extensions/squint/logic.test.ts",
+      "extensions/usage-bars/usage.test.mjs",
+      "packages/pstack-selected/tests/brief.test.ts",
+      "tests/theme-tokens.test.ts"],
+    more:["tests/transcript.test.ts","tests/render-badge.test.ts","tests/render-rail.test.ts",
+          "tests/fixtures/hashline.test.ts","tests/fixtures/okhsl.test.ts"],
+    hidden:5, meta:{lines:"9 files", time:"0.1s"} },
+
+  { kind:"ls", label:"LS", summary:"extensions/squint",
+    preview:["index.ts","logic.test.ts","logic.ts"],
+    more:[], hidden:0, meta:{lines:"3 entries", time:"0.0s"} },
+
+  { kind:"edit", label:"EDIT", summary:"extensions/squint/index.ts",
+    diff:[
+      {t:"ctx", s:"const COLLAPSED: Record<Kind, number> = {"},
+      {t:"del", s:"-\tread: 6,"},
+      {t:"add", s:"+\tread: 8,"},
+      {t:"ctx", s:"\tgrep: 8,"},
+      {t:"ctx", s:"\tfind: 8,"},
+      {t:"ctx", s:"\tls: 8,"},
+      {t:"ctx", s:"\tedit: 10,"},
+      {t:"add", s:"+\tcode: 6,"},
+      {t:"add", s:"+\task: 6,"},
+      {t:"ctx", s:"\tother: 6,"},
+      {t:"ctx", s:"};"}],
+    added:3, removed:1, hidden:7, hideLabel:"context lines",
+    meta:{lines:"+3 −1", time:"0.2s"} },
+
+  { kind:"write", label:"WRITE", summary:"extensions/squint/preview.html",
+    preview:["<!doctype html>","<meta charset=\"utf-8\">","<title>squint — render candidates</title>"],
+    more:['<link rel="stylesheet" href="fonts/fontfaces.css">'],
+    hidden:1, meta:{lines:"4 lines", time:"0.2s"} },
+
+  { kind:"shell", label:"SHELL", summary:"node logic.test.ts",
+    preview:["squint logic: ok"], more:[], hidden:0, meta:{lines:"exit 0", time:"0.4s"} },
+
+  { kind:"shell", label:"SHELL", summary:"npm test -- --reporter dot", tail:true,
+    preview:[
+      "..............................................................................",
+      "..............................................................................",
+      "  ✓ squint logic: ok (12ms)",
+      "  ✓ classify: 8 tones, 12 rules (3ms)",
+      "  Tests  2 passed (2)",
+      "  Time   0.41s"],
+    more:[
+      "..............................................................................",
+      "..............................................................................",
+      "  ✓ badgeLabel: 12 chars, ellipsis (2ms)"],
+    hidden:206, hideLabel:"earlier lines", meta:{lines:"exit 0", time:"0.9s"} },
+
+  { kind:"shell", label:"SHELL", summary:"git push origin main", error:true, exit:1,
+    preview:[
+      "To github.com:thomaskrapf/pi-extensions.git",
+      " ! [rejected]        main -> main (fetch first)",
+      "error: failed to push some refs to 'github.com:thomaskrapf/pi-extensions.git'"],
+    more:[
+      "hint: Updates were rejected because the remote contains work that you do not",
+      "hint: have locally. Integrate the remote changes before pushing again."],
+    hidden:2, meta:{lines:"exit 1", time:"1.1s"} },
+
+  { kind:"agent", label:"AGENT", summary:"review-team · correctness", agent:true,
+    preview:[], more:["ran 3 tools · 2 findings · 0 blockers"],
+    nested:[
+      {kind:"grep", label:"GREP", summary:"/previewLines/ · docs", preview:["docs/tui.md:88:  previewLines(...)"], meta:""},
+      {kind:"read", label:"READ", summary:"extensions/squint/logic.ts", preview:["190#XXMT:export function previewLines(list: string[], limit: number): Preview {"], meta:""},
+      {kind:"web", label:"WEB", summary:"pi tui okhsl theme", preview:["1  Theme JSON — pi docs","2  okhsl — Björn Ottosson"], meta:""}],
+    hidden:1, meta:{lines:"3 tools", time:"12.4s"} },
+
+  { kind:"web", label:"WEB", summary:"okhsl to hex conversion",
+    preview:[
+      "1  Converting OKHSL to sRGB — Björn Ottosson",
+      "   https://bottosson.github.io/posts/colorpicker/"],
+    more:["2  oklch() and the CSS Color 4 spec — MDN",
+          "   https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/oklch"],
+    hidden:1, meta:{lines:"2 results", time:"1.7s"} },
+
+  { kind:"todo", label:"TODO", summary:"squint render lab",
+    preview:["[x] run impeccable context","[x] write PRODUCT.md","[ ] build index.html","[ ] screenshot desktop + mobile"],
+    more:[], hidden:0, meta:{lines:"2/4", time:"0.1s"} },
+
+  { kind:"code", label:"CODE", summary:"render 5 directions × 20 cases",
+    preview:["→ 100 rows rendered in 6ms","→ 0 cases dropped"],
+    more:["→ dirs: badge, ledger, gutter, deck, rail"], hidden:1, meta:{lines:"codemode", time:"0.1s"} },
+
+  { kind:"ask", label:"ASK", summary:"Which direction should ship?",
+    preview:["1  Badge — what ships today","2  Ledger — dense, one line per call",
+             "3  Gutter — a column instead of a chip","4  Deck — each call boxed"],
+    more:["5  Rail — a trace spine","6  None: describe what is missing"], hidden:2, meta:{lines:"4 options", time:"0.0s"} },
+
+  { kind:"other", label:"BROWSER_CLI…", summary:"mcp__playwright__browser_click",
+    preview:["element=\"Expand every row\"  ref=\"e19\""],
+    more:["page: squint · five ways to render one pi session"], hidden:1, meta:{lines:"mcp", time:"0.6s"} },
+
+  { kind:"other", label:"GOAL_COMPLE…", summary:"squint render candidates reviewed",
+    preview:["5 directions compared · 20 cases each"], more:[], hidden:0, meta:{lines:"goal", time:"3.2s"} },
+];
+
+/* ------------------------------------------------------------------ *
+ * helpers
+ * ------------------------------------------------------------------ */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const tone = (c) => VAR[TONE[c.kind] || "gray"];
+const lines = (arr, cls) => arr.map((l) => `<span class="${cls || ""}">${esc(l)}</span>`).join("");
+const diffLine = (r, cls) => {
+  const col = r.t === "add" ? "var(--add)" : r.t === "del" ? "var(--del)" : "var(--muted)";
+  return `<span class="${cls} ${r.t === "ctx" ? "ctx" : ""}" style="color:${col}">${esc(r.s)}</span>`;
+};
+const kidsBlock = (c) => (c.nested||[]).map((k)=>`
+  <div class="kid" style="--tk:${tone(k)}">
+    <div class="kid-head"><span class="kid-lab">${esc(k.label)}</span><span class="kid-sum">${esc(k.summary)}</span></div>
+    <div class="pre">${lines(k.preview)}</div>
+  </div>`).join("");
+/* The extension passes hidden=0 for shell tail rows, so the hint carries no count there. */
+const hint = (c) => {
+  const n = c.tail ? 0 : (c.hidden || 0);
+  const growable = n > 0 || (c.more && c.more.length) || c.diff || (c.nested && c.nested.length);
+  if (!growable) return "";
+  const what = c.hideLabel ? `${n} ${c.hideLabel}` : `${n} more`;
+  const more = n ? `<span>+${what} · </span>` : "";
+  return `<span class="hint">${more}<span class="x">click to expand</span><span class="c">click to collapse</span></span>`;
+};
+
+/* ------------------------------------------------------------------ *
+ * 01 BADGE — the incumbent squint rendering
+ * ------------------------------------------------------------------ */
+function badge(c) {
+  const ind = (c.label.length + 3) + "ch";
+  const V = `style="--ind:${ind};--tk:${tone(c)}"`;
+  const head = `<span class="ch" style="background:${tone(c)}">${esc(c.label)}</span>${c.summary ? `<span class="sum">${esc(c.summary)}</span>` : ""}`;
+
+  if (c.diff) {
+    const d = c.diff.map((r) => {
+      const bgc = r.t === "add" ? "var(--add-bg)" : r.t === "del" ? "var(--del-bg)" : "var(--pending-bg)";
+      return `<span class="fill ${r.t === "ctx" ? "ctx" : ""}" style="color:${r.t==="add"?"var(--add)":r.t==="del"?"var(--del)":"var(--muted)"};background:${bgc}">${esc(r.s)}</span>`;
+    }).join("");
+    return `<div class="row badge" data-kind="${c.kind}" ${V}>
+      <button class="row-head" type="button" aria-expanded="false">${head}</button>
+      <div class="dwrap">${d}</div>
+      <span class="stats"><b style="color:var(--add)">+${c.added}</b> / <b style="color:var(--del)">−${c.removed}</b></span>
+      <div class="more"><div>${kidsBlock(c)}</div></div>
+      ${hint(c)}</div>`;
+  }
+  if (c.error) {
+    const row = (l) => `<span class="fill" style="color:var(--del);background:var(--del-bg)">${esc(l)}</span>`;
+    return `<div class="row badge" data-kind="${c.kind}" ${V}>
+      <button class="row-head" type="button" aria-expanded="false">${head}</button>
+      <div class="pre">${c.preview.map(row).join("")}</div>
+      <div class="more"><div><div class="pre">${c.more.map(row).join("")}</div>${kidsBlock(c)}</div></div>
+      ${hint(c)}
+    </div>`;
+  }
+  if (c.pending) {
+    return `<div class="row badge" data-kind="${c.kind}" ${V}>
+      <button class="row-head" type="button" aria-expanded="false">${head}</button>
+      <div class="pre"><span style="color:var(--dim)">…</span></div>
+      <div class="more"><div><div class="pre">${lines(c.more)}</div>${kidsBlock(c)}</div></div>
+      ${hint(c)}
+    </div>`;
+  }
+  const tail = c.tail && c.hidden ? `<span style="color:var(--dim)">… ${c.hidden} ${c.hideLabel || "earlier lines"}</span>` : "";
+  return `<div class="row badge" data-kind="${c.kind}" ${V}>
+    <button class="row-head" type="button" aria-expanded="false">${head}</button>
+    <div class="pre">${tail + lines(c.preview)}</div>
+    <div class="more"><div><div class="pre">${lines(c.more)}</div>${kidsBlock(c)}</div></div>
+    ${hint(c)}
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 02 LEDGER — one aligned line per call, nothing else until asked
+ * ------------------------------------------------------------------ */
+function ledger(c) {
+  const V = `style="--tk:${tone(c)}"`;
+  const cnt = c.error ? (c.exit != null ? `exit ${c.exit}` : "error") : (c.meta.lines || "—");
+  const head = `<span class="mk ${c.pending?"pend":""} ${c.error?"err":""}"></span>
+    <span class="lab">${esc(c.label)}</span><span class="sum">${esc(c.summary || "…")}</span>
+    <span class="cnt" ${c.error?'style="color:var(--del)"':""}>${esc(cnt)}</span>
+    <span class="tm">${esc(c.meta.time)}</span><span class="cv"></span>`;
+  let body;
+  if (c.diff) body = `<div class="pre">${c.diff.map((r)=>diffLine(r,"dline")).join("")}</div>
+      <span class="hint" style="padding-left:10px"><b style="color:var(--add)">+${c.added}</b> / <b style="color:var(--del)">−${c.removed}</b> · ${c.hidden} context lines</span>`;
+  else if (c.error) body = `<div class="pre">${c.preview.concat(c.more).map((l)=>`<span class="err-line">${esc(l)}</span>`).join("")}</div>`;
+  else if (c.pending) body = `<div class="pre"><span style="color:var(--dim)">…streaming</span></div>`;
+  else {
+    const pre = (c.tail && c.hidden ? `<span style="color:var(--dim)">… ${c.hidden} ${c.hideLabel || "earlier lines"}</span>` : "") + lines(c.preview);
+    body = `<div class="pre">${pre}${lines(c.more)}</div>`;
+  }
+  return `<div class="row ledger" data-kind="${c.kind}" ${V}>
+    <button class="row-head" type="button" aria-expanded="false">${head}</button>
+    <div class="more"><div><div class="body">${body}${kidsBlock(c)}</div></div></div>
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 03 GUTTER — a typographic column instead of a chip
+ * ------------------------------------------------------------------ */
+function gutter(c) {
+  const tk = tone(c);
+  const V = `style="--tk:${tk};--tk-line:color-mix(in oklab, ${tk} 30%, transparent)"`;
+  const head = `<span class="gc">${esc(c.label)}</span><span class="sum">${esc(c.summary || "—")}</span>
+    <span class="meta" ${c.error?'style="color:var(--del)"':""}>${esc(c.error ? (c.exit != null ? `exit ${c.exit}` : "error") : c.meta.lines)}</span>`;
+  let pre, more = "";
+  if (c.diff) { pre = c.diff.map((r)=>diffLine(r,"dline")).join(""); more = `<div class="pre" style="color:var(--dim);padding-top:4px">+${c.added} −${c.removed} · ${c.hidden} context lines</div>`; }
+  else if (c.error) { pre = c.preview.map((l)=>`<span class="dline d">${esc(l)}</span>`).join(""); more = `<div class="pre">${c.more.map((l)=>`<span class="dline d">${esc(l)}</span>`).join("")}</div>`; }
+  else if (c.pending) pre = `<span class="dline" style="color:var(--dim)">…</span>`;
+  else {
+    pre = (c.tail && c.hidden ? `<span class="dline" style="color:var(--dim)">… ${c.hidden} ${c.hideLabel || "earlier lines"}</span>` : "") + lines(c.preview, "dline");
+    more = `<div class="pre">${lines(c.more, "dline")}</div>`;
+  }
+  return `<div class="row gutter" data-kind="${c.kind}" ${V}>
+    <button class="row-head" type="button" aria-expanded="false">${head}</button>
+    <div class="pre">${pre}</div>
+    <div class="more"><div>${more}${kidsBlock(c)}</div></div>
+    ${hint(c)}
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 04 DECK — each call boxed; nesting visible inside the parent
+ * ------------------------------------------------------------------ */
+function deck(c) {
+  const tk = tone(c);
+  const head = `<span class="dot ${c.pending?"pend":""} ${c.error?"err":""}"></span>
+    <span class="dh"><span class="lab">${esc(c.label)}</span><span class="sum">${esc(c.summary||"…")}</span></span>
+    <span class="meta" ${c.error?'style="color:var(--del)"':""}>${esc(c.error ? (c.exit!=null?`exit ${c.exit}`:"error") : (c.meta.lines||""))}${c.meta.time?` · ${esc(c.meta.time)}`:""}</span>`;
+  let pre;
+  if (c.diff) pre = `<div class="pre">${c.diff.map((r)=>diffLine(r,"dline")).join("")}</div><span class="stats" style="padding:0 12px 8px">+${c.added} / −${c.removed}</span>`;
+  else if (c.error) pre = `<div class="pre">${c.preview.map((l)=>`<span class="dline d">${esc(l)}</span>`).join("")}</div>`;
+  else if (c.pending) pre = `<div class="pre"><span class="dline" style="color:var(--dim)">…streaming</span></div>`;
+  else pre = `<div class="pre">${(c.tail&&c.hidden?`<span style="color:var(--dim)">… ${c.hidden} ${c.hideLabel||"earlier lines"}</span>`:"")}${lines(c.preview)}</div>`;
+  const moreLines = c.diff ? "" : (c.error
+    ? `<div class="pre">${c.more.map((l)=>`<span class="dline d">${esc(l)}</span>`).join("")}</div>`
+    : `<div class="pre">${lines(c.more)}</div>`);
+  const kids = kidsBlock(c);
+  return `<div class="row deck" data-kind="${c.kind}" style="--tk:${tk}">
+    <div class="panel ${c.error?"err":""}">
+      <button class="row-head" type="button" aria-expanded="false">${head}</button>
+      ${pre}
+      <div class="more"><div>${moreLines}${kids}</div></div>
+    </div>
+    ${hint(c)}
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 05 RAIL — a trace spine; nesting is the point
+ * ------------------------------------------------------------------ */
+function rail(c) {
+  const head = `<span class="node ${c.pending?"pend":""} ${c.error?"err":""}"><i></i></span>
+    <span class="rh"><span class="lab">${esc(c.label)}</span><span class="sum">${esc(c.summary||"…")}</span></span>
+    <span class="meta" ${c.error?'style="color:var(--del)"':""}>${esc(c.error ? (c.exit!=null?`exit ${c.exit}`:"error") : (c.meta.lines||""))}${c.meta.time?` · ${esc(c.meta.time)}`:""}</span>`;
+  let pre, more;
+  if (c.diff) { pre = c.diff.map((r)=>diffLine(r,"dline")).join(""); more = ""; }
+  else if (c.error) { pre = c.preview.map((l)=>`<span class="dline e">${esc(l)}</span>`).join(""); more = `<div class="pre">${c.more.map((l)=>`<span class="dline e">${esc(l)}</span>`).join("")}</div>`; }
+  else if (c.pending) { pre = `<span class="dline" style="color:var(--dim)">…</span>`; more = `<div class="pre">${lines(c.more)}</div>`; }
+  else { pre = (c.tail&&c.hidden?`<span class="dline" style="color:var(--dim)">… ${c.hidden} ${c.hideLabel||"earlier lines"}</span>`:"") + lines(c.preview); more = `<div class="pre">${lines(c.more)}</div>`; }
+  const kids = (c.nested||[]).map((k)=>`
+    <div class="kid" style="--tk:${tone(k)}">
+      <span class="elbow"></span>
+      <button class="row-head" type="button" tabindex="-1" style="--tk:${tone(k)}">
+        <span class="rh" style="padding-left:2.4ch"><span class="lab">${esc(k.label)}</span><span class="sum">${esc(k.summary)}</span></span>
+        <span class="meta">${esc(k.meta||"")}</span>
+      </button>
+      <div class="pre">${lines(k.preview)}</div>
+    </div>`).join("");
+  const extra = c.diff ? `<span class="stats" style="padding-left:3.5ch">+${c.added} −${c.removed} · ${c.hidden} context lines</span>` : "";
+  return `<div class="row rail" data-kind="${c.kind}" style="--tk:${tone(c)}">
+    <button class="row-head" type="button" aria-expanded="false">${head}</button>
+    ${pre ? `<div class="pre">${pre}</div>` : ""}
+    ${(more || kids) ? `<div class="more"><div>${more}${kids}</div></div>` : ""}
+    ${extra}
+    ${hint(c)}
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * The five directions
+ * ------------------------------------------------------------------ */
+const DIRECTIONS = [
+  { id:"badge", n:"01", name:"Badge", tag:"Ships today", density:4, render:badge,
+    thesis:"One filled chip names the tool, one dim line gives the argument, and a slice of the output follows. It is the densest design that still shows output <strong>without a click</strong>.",
+    best:"Mixed sessions where you actually read the output.",
+    risk:"The chip is loud at forty calls, and its color carries the category, not the state." },
+  { id:"ledger", n:"02", name:"Ledger", density:5, render:ledger,
+    thesis:"Every call collapses to one aligned row — mark, label, target, line count, time — and shows nothing else until you open it. A three-hundred-call session becomes <strong>a list you can scan in one pass</strong>.",
+    best:"Long sessions, and finding the one call that mattered.",
+    risk:"You cannot judge a read without clicking, and an error that does not earn its tint disappears." },
+  { id:"gutter", n:"03", name:"Gutter", density:3, render:gutter,
+    thesis:"The chip becomes a fixed-width text column, so labels line up down one edge and targets down another. Output hangs off a <strong>1px rule</strong>, the way an editor hangs an outline.",
+    best:"Scanning by tool and by path at the same time.",
+    risk:"Less color, so state has to be said in words; each row reads slower even as the column reads faster." },
+  { id:"deck", n:"04", name:"Deck", density:2, render:deck,
+    thesis:"Each call is a bordered panel — dot, label, target, stats, then the output inside it. Grouping is unambiguous, and <strong>a subagent's children sit in their parent's box</strong>.",
+    best:"Understanding one call at a time, and anything nested.",
+    risk:"Sixty calls become a very tall stack; the boxes fight the density the extension exists for." },
+  { id:"rail", n:"05", name:"Rail", density:3, render:rail,
+    thesis:"A trace spine runs down the transcript and every call is a node on it; nested work hangs off its parent. The only direction where <strong>a subagent's shape is visible at a glance</strong>.",
+    best:"Agent-heavy sessions, where causality is the question.",
+    risk:"The spine costs a column on every row and reads as an outlier beside pi's existing transcript." },
+];
+
+const CHROME = (d) => `
+  <div class="term-bar">
+    <span class="id"><b>pi</b><span>/</span>squint render lab<span>/</span>${esc(d.name)}</span>
+    <span class="rt">mock · dark · 132×44 · ${esc(d.id)}</span>
+  </div>
+  <div class="transcript">
+    <div class="umsg"><span class="g">›</span><span class="b">make a simple website with different candidates of the design</span></div>
+    <div class="amsg">Rendering the same transcript five ways. <span class="dim">Every case is present in every frame.</span></div>
+    <div class="rows">${CASES.map((c)=>d.render(c)).join("")}</div>
+    <div class="amsg" style="margin-top:14px">All cases render. <span class="dim">Click a row to open it.</span></div>
+    <div style="margin:0 13px"><button class="expand-all" type="button" data-expand="${esc(d.id)}">Expand all rows</button></div>
+  </div>
+  <div class="composer">
+    <div class="box"><span class="pr">›</span><span class="ph">Ask anything — or pick a direction</span><span class="caret"></span></div>
+    <div class="keys">
+      <span><b>⌘E</b> expand latest</span><span><b>⇧⇥</b> thinking</span>
+      <span><b>esc</b> interrupt</span><span><b>/help</b> commands</span>
+    </div>
+  </div>
+  <div class="term-foot">
+    <p><span class="mu">command-code / claude-fable-5</span> <span>(med)</span> · <span>ctx 42.1%</span> · <span class="mu">main</span></p>
+    <p><span>5h</span><span class="bar"><i style="width:62%"></i></span><span>62.4% left</span><span>·</span><span>resets 2h 14m</span></p>
+    <p><span>wk</span><span class="bar warn"><i style="width:24%"></i></span><span>24.1% left</span><span>·</span><span>resets Mon 09:00</span></p>
+    <p><span class="ok">command · live</span><span>5 directions · 20 cases</span></p>
+  </div>`;
+
+document.getElementById("stage").innerHTML = DIRECTIONS.map((d)=>`
+  <section class="cand" id="${d.id}">
+    <h2 class="cand-title"><span class="num">${d.n}</span>${esc(d.name)}${d.tag?`<span class="tag">${esc(d.tag)}</span>`:""}</h2>
+    <p class="cand-thesis">${d.thesis}</p>
+    <dl class="specs">
+      <div><dt>Density</dt><dd><span class="pips">${[1,2,3,4,5].map((k)=>`<i class="${k<=d.density?"on":""}"></i>`).join("")}</span></dd></div>
+      <div><dt>Best at</dt><dd>${esc(d.best)}</dd></div>
+      <div><dt>Honest risk</dt><dd>${esc(d.risk)}</dd></div>
+    </dl>
+    <figure class="term" aria-label="Rendered mock: ${esc(d.name)} direction">${CHROME(d)}</figure>
+  </section>`).join("");
+
+/* ------------------------------------------------------------------ *
+ * Interaction
+ * ------------------------------------------------------------------ */
+const setOpen = (row, open) => {
+  row.classList.toggle("open", open);
+  const head = row.querySelector(".row-head[aria-expanded]");
+  if (head) head.setAttribute("aria-expanded", String(open));
+  syncLabels();
+};
+const allRows = (scope) => scope.querySelectorAll(".row[data-kind]");
+const toggle = (row) => setOpen(row, !row.classList.contains("open"));
+const syncLabels = () => document.querySelectorAll(".cand").forEach((sec)=>{
+  const rows = [...allRows(sec)];
+  const btn = sec.querySelector(".expand-all");
+  if (btn) btn.textContent = rows.length && rows.every((r)=>r.classList.contains("open")) ? "Collapse all rows" : "Expand all rows";
+});
+
+document.addEventListener("click", (e) => {
+  const head = e.target.closest(".row-head");
+  if (head) {
+    if (head.hasAttribute("tabindex")) return;
+    const row = head.closest(".row[data-kind]");
+    if (row) toggle(row);
+    return;
+  }
+  const ex = e.target.closest(".expand-all");
+  if (ex) {
+    const rows = allRows(ex.closest(".cand"));
+    const open = [...rows].every((r)=>r.classList.contains("open"));
+    rows.forEach((r)=>setOpen(r, !open));
+    ex.textContent = open ? "Expand all rows" : "Collapse all rows";
+  }
+});
+
+document.querySelectorAll("[data-bulk]").forEach((b)=>b.addEventListener("click",()=>{
+  const open = b.dataset.bulk === "open";
+  document.querySelectorAll(".cand").forEach((sec)=>allRows(sec).forEach((r)=>setOpen(r, open)));
+  document.querySelectorAll(".expand-all").forEach((x)=>x.textContent = open ? "Collapse all rows" : "Expand all rows");
+}));
+
+document.addEventListener("keydown", (e) => {
+  if (!(e.metaKey && e.key.toLowerCase() === "e")) return;
+  const rows = [...document.querySelectorAll(".cand")].flatMap((s)=>[...allRows(s)]);
+  const vis = rows.filter((r)=>{const b=r.getBoundingClientRect();return b.top<innerHeight&&b.bottom>0;});
+  const row = vis[vis.length-1] || rows[rows.length-1];
+  if (row) { e.preventDefault(); toggle(row); }
+});
+
+const links = [...document.querySelectorAll(".index a")];
+const io = new IntersectionObserver((ents)=>{
+  ents.forEach((en)=>{
+    if (!en.isIntersecting) return;
+    links.forEach((a)=>{const on = a.getAttribute("href") === "#" + en.target.id; a.classList.toggle("on", on); if (on) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");});
+  });
+},{rootMargin:"0px 0px -55% 0px"});
+document.querySelector('.index a')?.setAttribute('aria-current', 'true');
+document.querySelectorAll(".cand").forEach((s)=>io.observe(s));
+</script>
+</body>
+</html>

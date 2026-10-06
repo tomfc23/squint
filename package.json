@@ -1,7 +1,7 @@
 {
   "name": "pi-squint",
   "version": "0.1.0",
-  "description": "Compact transcript rendering for pi, in five interchangeable directions",
+  "description": "Compact transcript rendering for pi: interchangeable directions for tool calls, and styles for fenced code blocks",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -28,6 +28,15 @@
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*"
   },
+  "files": [
+    "index.ts",
+    "directions.ts",
+    "logic.ts",
+    "codeblocks.ts",
+    "shim.ts",
+    "menu.ts",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22.6"
   }
