@@ -76,14 +76,25 @@ Either way, `/reload` in a running session picks it up.
 ## Use
 
 ```
-/squint              pick a render mode (rail, ledger, badge, gutter, deck, off, custom)
-/squint ledger       set one directly
-/squint off          hand tool calls back to pi's own rendering
+/squint              one menu: choose tool calls or code blocks, then the mode
+/squint tui          go straight to the tool call picker (rail, ledger, badge, gutter, deck, off, custom)
+/squint ledger       set a tool call direction directly
+/squint code         go straight to the code block picker (spine, card, panel, listing, rule, chip, off)
+/squint card         set a code block style directly
+/squint off          hand tool calls back to pi ("/squint code off" does it for code blocks)
 /squint custom       describe a direction; pi builds it with a local preview first
 /squint key ctrl+o   set the expand/collapse shortcut (saved, then reloaded)
-/squint code         pick how fenced code blocks render (spine, card, panel, listing, rule, chip, off)
-/squint code card    set one directly
 ```
+
+squint draws two things, so `/squint` asks which one first:
+
+```
+  ❯ Tool calls — rail
+    Code blocks — spine
+```
+
+Each entry states what that family draws now. Pick one and its own picker opens, current choice marked.
+A bare name still works (`/squint card`), and `off` keeps meaning tool calls, as it always has.
 
 The picker lists every mode with the current one marked and closes after one choice, so the transcript
 is visible behind it. The choice is saved to `<agent-dir>/squint.json` — `~/.pi/agent/` by default, or
