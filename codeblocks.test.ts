@@ -7,7 +7,7 @@
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { CODE_STYLES, DEFAULT_CODE_STYLE, isCodeStyle, renderCodeBlock, cellWidth, type CodeArea, type CodeStyle } from "./codeblocks.ts";
+import { CODE_STYLES, DEFAULT_CODE_STYLE, cellWidth, isCodeStyle, renderCodeBlock, unwrapFence, unwrapQuotedMarkdown, type CodeArea, type CodeStyle } from "./codeblocks.ts";
 import { applyShim, SHIM, shimSource, shimTargets, STOCK } from "./shim.ts";
 
 /* ----------------------------- stub theme ------------------------------ */
@@ -39,15 +39,56 @@ const area: CodeArea = {
 	highlightCode: (code) => code.split("\n").map((line) => `${A.code}${line}${A.reset}`),
 };
 
-const context = (style: CodeStyle, ink?: unknown) => ({ style, theme: stubTheme, area, ink });
+// pi-tui's visibleWidth counts wide glyphs as two cells; this stub stands in for it.
+const widthOf = (text: string) => [...text.replace(/\x1b\[[0-9;]*m/g, "")].reduce((n, ch) => n + (ch.codePointAt(0)! > 0x2e80 ? 2 : 1), 0);
+// Hard wrap at the cell boundary, standing in for pi-tui's wrapTextWithAnsi.
+const hardWrap = (text: string, room: number) => {
+	const out: string[] = [];
+	let line = "";
+	for (const ch of [...text.replace(/\x1b\[[0-9;]*m/g, "")]) {
+		if (widthOf(line + ch) > room) { out.push(line); line = "" }
+		line += ch;
+	}
+	if (line) out.push(line);
+	return out;
+};
+const context = (style: CodeStyle, ink?: unknown) => ({ style, theme: stubTheme, area, ink, width: widthOf, wrap: hardWrap });
 
 const CODE = 'const a = 1; // one\nthis.filterModels?.(this.searchInput?.getValue() ?? "");';
 const plain = (lines: string[]) => lines.map((line) => line.replace(/\x1b\[[0-9;]*m/g, ""));
 
+/* ------------------------- pasted fenced blocks ------------------------- */
+
+// Copying a fenced snippet out of a chat message brings the outer fence with it.
+assert.deepEqual(unwrapFence("```ts\nconst a = 1;\n```"), { text: "const a = 1;", lang: "ts" }, "an outer fence is unwrapped");
+assert.deepEqual(unwrapFence("````md\n```ts\nconst a = 1;\n```\n````"), { text: "```ts\nconst a = 1;\n```", lang: "md" }, "one level only");
+assert.deepEqual(unwrapFence("const a = 1;\nconst b = 2;"), { text: "const a = 1;\nconst b = 2;" }, "ordinary code is left alone");
+assert.deepEqual(unwrapFence("```ts\nconst a = 1;"), { text: "```ts\nconst a = 1;" }, "an unclosed fence is left alone");
+assert.deepEqual(unwrapFence("const a = 1;\n```"), { text: "const a = 1;\n```" }, "a lone closing fence is left alone");
+
+{
+	const pasted = renderCodeBlock(context("spine"), "```ts\nconst a = 1;\n```", undefined, 74)!;
+	const text = plain(pasted).join("\n");
+	assert.ok(!text.includes("```"), "a pasted block never shows the fence it was pasted with");
+	assert.deepEqual(plain(pasted), ["  ts", "  │ const a = 1;"], "it renders as the block it wraps");
+	assert.ok(pasted.some((line) => line.includes(A.code)), "and the inner language is the one highlighted");
+}
+
+// A whole document pasted out of a fenced chat message: the outer fence goes, the inner
+// markdown is handed back to pi, which is what turns it into headings and code blocks.
+const sheet = "````md\n# Title\n\nText.\n\n```ts\nconst a = 1;\n```\n````";
+assert.equal(unwrapQuotedMarkdown(sheet), "# Title\n\nText.\n\n```ts\nconst a = 1;\n```", "a pasted document is unwrapped for pi to parse");
+assert.equal(unwrapQuotedMarkdown("\n\n" + sheet + "\n\n"), "# Title\n\nText.\n\n```ts\nconst a = 1;\n```", "surrounding blank lines do not stop it");
+assert.equal(unwrapQuotedMarkdown("`````\n````\n```ts\n````\n`````"), "````\n```ts\n````", "one level, however deep");
+assert.equal(unwrapQuotedMarkdown("```ts\nconst a = 1;\n```"), "```ts\nconst a = 1;\n```", "an ordinary code paste is left alone");
+assert.equal(unwrapQuotedMarkdown("````\nconst a = 1;\n````"), "````\nconst a = 1;\n````", "four backticks with nothing fenced inside are left alone");
+assert.equal(unwrapQuotedMarkdown("Here it is:\n\n````md\n```ts\n````"), "Here it is:\n\n````md\n```ts\n````", "a fence inside prose is left alone");
+assert.equal(unwrapQuotedMarkdown("# Title\n\n```ts\nconst a = 1;\n```"), "# Title\n\n```ts\nconst a = 1;\n```", "plain markdown is left alone");
+
 /* ------------------------------- styles -------------------------------- */
 
 assert.equal(renderCodeBlock(context("off"), CODE, "ts", 74), undefined, "off hands the block back to pi");
-assert.equal(renderCodeBlock(context("spine"), "", "ts", 74), undefined, "empty content is left to pi");
+assert.deepEqual(plain(renderCodeBlock(context("spine"), "", "ts", 74) ?? []), ["  ts", "  │ "], "an empty block still draws its chrome, never pi's fences");
 assert.equal(renderCodeBlock(context("spine"), CODE, undefined, 74)?.length, 2, "no language means no label line");
 
 for (const { id } of CODE_STYLES) {
@@ -67,6 +108,12 @@ for (const { id } of CODE_STYLES) {
 	const lines = plain(renderCodeBlock(context("spine"), CODE, "ts", 74)!);
 	assert.deepEqual(lines, ["  ts", '  │ const a = 1; // one', '  │ this.filterModels?.(this.searchInput?.getValue() ?? "");']);
 	assert.ok(renderCodeBlock(context("spine"), CODE, "ts", 74)![1].startsWith("  " + A.fg + "│ "), "the rule is painted with pi's code chrome token");
+}
+
+// card: wide glyphs and emoji count as two cells, so the right rail stays straight
+{
+	const wide = renderCodeBlock(context("card"), "const note = \"日本語\"; // ✓ 完了", "ts", 74)!;
+	assert.deepEqual([...new Set(wide.map((line) => widthOf(line)))], [74], "a line of wide glyphs still closes the card at the right column");
 }
 
 // card: closed, every rail the same width, padding inside the right edge
@@ -94,6 +141,28 @@ for (const { id } of CODE_STYLES) {
 	assert.ok(plain(lines)[0].startsWith("ts") && plain(lines)[0].endsWith("2 lines"), "the header states the count");
 	assert.deepEqual(plain(lines).slice(1).map((line) => line.slice(0, 4)), ["1 │ ", "2 │ "], "the gutter counts from one");
 	assert.ok(lines[1].startsWith(A.dim + "1 "), "the numbers are dim");
+}
+
+// card and panel wrap their own content, so a long line cannot break the boundary
+{
+	const long = `const url = "https://example.test/${"x".repeat(70)}/end"; // and a trailing note that runs on`;
+	const payload = {
+		card: (line: string) => line.slice(2, -2), // between the rails
+		panel: (line: string) => line,
+		listing: (line: string) => line.replace(/^[^│]*│ ?/, ""), // after the gutter
+	};
+	const squash = (text: string) => text.replace(/\s+/g, "");
+	for (const style of ["card", "panel", "listing"] as const) {
+		const lines = renderCodeBlock(context(style), long, "ts", 74)!;
+		const rows = lines.map(widthOf);
+		assert.ok(Math.max(...rows) <= 74, `${style} keeps every row inside the width`);
+		if (style === "card") assert.deepEqual([...new Set(rows)], [74], "a wrapped card keeps both rails at the edge");
+		if (style === "panel") assert.deepEqual([...new Set(rows)], [74], "a wrapped panel stays a rectangle");
+		assert.ok(lines.length > 1, `${style} grew rows instead of overflowing`);
+		const text = squash(plain(lines).map(payload[style]).join(""));
+		assert.ok(text.includes(squash("/end")), `${style} keeps the middle of a long line`);
+		assert.ok(text.includes(squash("trailing note that runs on")), `${style} keeps the tail of a long line`);
+	}
 }
 
 // rule: one hairlane header, then plain indented code

@@ -133,6 +133,19 @@ keeps the patch direction-agnostic — pi asks a global, squint answers:
 Syntax highlighting is untouched: the code comes from the markdown theme's own `highlightCode`, so a
 theme change moves the blocks with it. `/squint code` writes the choice to `squint.json` and reloads.
 
+Two things the styles do beyond drawing, both because pasting is how code arrives:
+
+- **A block that is itself one fenced block is unwrapped once**, so a snippet copied out of a chat
+  message does not render as a code block whose first and last lines are backticks. The inner
+  language becomes the label and the one that gets highlighted.
+- **A pasted *document* that was fenced is unwrapped before pi parses it** (`registerMarkdownTransformer`,
+  user messages only, and only for a fence of 4+ backticks that really does contain a fence). That is
+  what makes a pasted sheet render as its own headings and code blocks instead of as one giant card
+  full of fence markers. Assistant markdown is never touched: quoting a fence has to stay possible.
+- the boundary-claiming styles (**card**, **panel**, and **listing**'s gutter) wrap long lines
+  themselves with pi-tui's `wrapTextWithAnsi`, so a line that does not fit grows the block instead of
+  tearing a hole in the right rail
+
 Two things are worth knowing about the patch:
 
 - it lives inside the pi release (`dist/bundle/chunks/*.js` for the transcript, `@earendil-works/pi-tui`

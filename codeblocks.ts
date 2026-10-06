@@ -60,6 +60,60 @@ export interface CodeContext {
 	area: CodeArea;
 	/** The chip's text colour: resolved by the caller, which can reach pi-tui's parseColor. */
 	ink?: unknown;
+	/**
+	 * Cell width of a styled line, for the padded styles. The caller passes pi-tui's
+	 * visibleWidth so a comment in Japanese or an emoji in a string keeps the right rail
+	 * straight; the fallback counts code points, which is only right for ASCII.
+	 */
+	width?: (text: string) => number;
+	/**
+	 * pi-tui's wrapTextWithAnsi. The styles that claim a boundary wrap their own content, so a
+	 * long line grows the block instead of tearing a hole in the right rail; without it the
+	 * line is left whole and pi's component wraps it.
+	 */
+	wrap?: (text: string, width: number) => string[];
+}
+
+/**
+ * A block whose entire content is itself one fenced block: what you get when a fenced
+ * snippet is copied out of a chat message and pasted into a prompt, outer fence and all.
+ * One level is unwrapped, because the alternative on screen is a code block whose first and
+ * last lines are backticks. `off` still shows pi's own reading of the same text.
+ */
+export function unwrapFence(text: string): { text: string; lang?: string } {
+	const lines = text.split("\n");
+	if (lines.length < 2) return { text };
+	const open = /^\s*(`{3,}|~{3,})([^\s`]*)\s*$/.exec(lines[0]);
+	const close = /^\s*(`{3,}|~{3,})\s*$/.exec(lines[lines.length - 1]);
+	if (!open || !close) return { text };
+	if (open[1][0] !== close[1][0] || close[1].length < open[1].length) return { text };
+	return { text: lines.slice(1, -1).join("\n"), lang: open[2] || undefined };
+}
+
+/**
+ * The same mistake one level up: pasting a whole *document* that was itself fenced — a 4+
+ * backtick block quoting markdown that contains 3-backtick blocks. pi parses that as one code
+ * block, so the sheet arrives as a card full of fence markers instead of as headings and code.
+ *
+ * Only a message that is nothing but that one fence is touched, only fences of 4+ backticks,
+ * and only when the inside really does carry a fence — which is the reason anyone writes four
+ * backticks in the first place. A straight 3-backtick code block, the common paste, is left
+ * exactly as it is.
+ */
+export function unwrapQuotedMarkdown(markdown: string): string {
+	const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+	while (lines.length && lines[0].trim() === "") lines.shift();
+	while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+	if (lines.length < 4) return markdown;
+
+	const open = /^(`{3,}|~{3,})([^\s`]*)$/.exec(lines[0]);
+	const close = /^(`{3,}|~{3,})$/.exec(lines[lines.length - 1]);
+	if (!open || !close) return markdown;
+	if (open[1][0] !== close[1][0] || open[1].length < 4 || close[1].length < open[1].length) return markdown;
+
+	const body = lines.slice(1, -1);
+	if (!body.some((line) => /^\s*(`{3,}|~{3,})/.test(line))) return markdown;
+	return body.join("\n");
 }
 
 /** Lines of terminal text: one string per physical line, already styled. */
@@ -67,7 +121,7 @@ export type CodeLines = string[];
 
 const INDENT = "  ";
 
-/** Width in cells, ignoring ANSI. Code lines are ASCII; pi's markdown theme has no wide-glyph helper. */
+/** Width in cells, ignoring ANSI. Only right for ASCII; the caller passes pi-tui's visibleWidth. */
 export function cellWidth(text: string): number {
 	return text.replace(/\x1b\[[0-9;]*m/g, "").length;
 }
@@ -81,13 +135,18 @@ const pad = (n: number) => " ".repeat(Math.max(0, n));
 export function renderCodeBlock(context: CodeContext, code: string, lang: string | undefined, width: number): CodeLines | undefined {
 	const { style, theme, area, ink } = context;
 	if (style === "off") return undefined;
-	const text = code.replace(/\r\n?/g, "\n").replace(/\n$/, "");
-	if (!text) return undefined;
-
-	const lines = area.highlightCode(text, lang);
+	const unwrapped = unwrapFence(code.replace(/\r\n?/g, "\n").replace(/\n$/, ""));
+	const text = unwrapped.text;
+	// After unwrapping, the code's own language is the one to highlight.
+	const highlightedLang = unwrapped.lang ?? lang;
+	const lines = area.highlightCode(text, highlightedLang);
+	if (lines.length === 0) lines.push("");
+	const label = (unwrapped.lang ?? lang)?.trim();
+	const widthOf = context.width ?? cellWidth;
+	const wrapTo = (line: string, room: number): string[] =>
+		widthOf(line) <= room || !context.wrap ? [line] : context.wrap(line, room);
 	const painted = (value: string) => theme.style(value, { fg: theme.colors.mdCodeBlockBorder });
 	const dim = (value: string) => theme.style(value, { fg: theme.colors.dim });
-	const label = lang?.trim();
 	const gutter = String(lines.length).length;
 
 	switch (style) {
@@ -104,33 +163,43 @@ export function renderCodeBlock(context: CodeContext, code: string, lang: string
 			const top = `╭─${label ? ` ${label} ` : ""}`;
 			const out: CodeLines = [painted(`${top}${"─".repeat(Math.max(0, width - top.length - 1))}╮`)];
 			for (const line of lines) {
-				out.push(painted("│ ") + line + pad(body - cellWidth(line)) + painted(" │"));
+				// A line that does not fit becomes rows, so the card stays closed at both rails.
+				for (const part of wrapTo(line, body)) {
+					out.push(painted("│ ") + part + pad(body - widthOf(part)) + painted(" │"));
+				}
 			}
 			out.push(painted(`╰${"─".repeat(Math.max(1, width - 2))}╯`));
 			return out;
 		}
 
 		case "panel": {
-			const out: CodeLines = label ? [pad(width - cellWidth(label)) + painted(label)] : [];
+			const out: CodeLines = label ? [pad(width - widthOf(label)) + painted(label)] : [];
 			for (const line of lines) {
-				out.push(theme.style(line + pad(width - cellWidth(line)), { bg: theme.colors.toolPendingBg }));
+				// The ground is a rectangle, so it wraps rather than letting a line run past it.
+				for (const part of wrapTo(line, width)) {
+					out.push(theme.style(part + pad(width - widthOf(part)), { bg: theme.colors.toolPendingBg }));
+				}
 			}
 			return out;
 		}
 
 		case "listing": {
 			const out: CodeLines = label
-				? [painted(label) + pad(width - cellWidth(label) - `${lines.length} lines`.length) + dim(`${lines.length} lines`)]
+				? [painted(label) + pad(width - widthOf(label) - `${lines.length} lines`.length) + dim(`${lines.length} lines`)]
 				: [];
+			const blank = " ".repeat(gutter + 1);
 			lines.forEach((line, index) => {
-				out.push(dim(String(index + 1).padStart(gutter) + " ") + painted("│ ") + line);
+				const parts = wrapTo(line, Math.max(16, width - gutter - 3));
+				parts.forEach((part, row) => {
+					out.push(dim((row === 0 ? String(index + 1).padStart(gutter) + " " : blank)) + painted("│ ") + part);
+				});
 			});
 			return out;
 		}
 
 		case "rule": {
 			const out: CodeLines = [];
-			if (label) out.push(painted(`${label} `) + painted("─".repeat(Math.max(0, width - cellWidth(label) - 1))));
+			if (label) out.push(painted(`${label} `) + painted("─".repeat(Math.max(0, width - widthOf(label) - 1))));
 			for (const line of lines) out.push(INDENT + line);
 			return out;
 		}

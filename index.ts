@@ -24,7 +24,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionCommandContext, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
-import { type Component, type KeyId, MouseRegion, parseColor } from "@earendil-works/pi-tui";
+import { type Component, type KeyId, MouseRegion, parseColor, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import {
 	buildRow,
 	DEFAULT_DIRECTION,
@@ -45,6 +45,7 @@ import {
 	isCodeStyle,
 	liveTheme,
 	renderCodeBlock,
+	unwrapQuotedMarkdown,
 	type CodeArea,
 	type CodeBlockHook,
 	type CodeStyle,
@@ -265,12 +266,22 @@ export default function squint(pi: ExtensionAPI) {
 			if (codeBlock === "off") return undefined;
 			const theme = liveTheme();
 			if (!theme) return undefined;
-			return renderCodeBlock({ style: codeBlock, theme, area, ink: parseColor(BADGE_FG) }, code, lang, width);
+			return renderCodeBlock({ style: codeBlock, theme, area, ink: parseColor(BADGE_FG), width: visibleWidth, wrap: wrapTextWithAnsi }, code, lang, width);
 		} catch {
 			return undefined;
 		}
 	};
 	(globalThis as Record<string, unknown>)["__squintCodeBlock"] = codeHook;
+
+	/**
+	 * A pasted document that was itself fenced is unwrapped before pi parses it, so its own
+	 * code blocks come out as code blocks instead of as fence markers inside one big block.
+	 * Assistant markdown is untouched: quoting a fence has to stay possible. "off" means pi
+	 * owns code blocks, so it owns this too.
+	 */
+	pi.registerMarkdownTransformer((markdown, context) =>
+		context.messageType === "user" && codeBlock !== "off" ? unwrapQuotedMarkdown(markdown) : markdown,
+	);
 	let latestId: string | null = null;
 	/** Read once per load; a new binding only takes effect after /reload (or ctx.reload()). */
 	const key = settings.key;
