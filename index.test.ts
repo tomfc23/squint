@@ -11,7 +11,10 @@ const version = readFileSync(join(install, "current-version"), "utf8").trim();
 const modules = join(install, "releases", version, "node_modules");
 const requirePi = createRequire(join(modules, "@earendil-works/pi-coding-agent/package.json"));
 const { createJiti } = requirePi("jiti");
-const jiti = createJiti(import.meta.url, { alias: { "@earendil-works/pi-tui": requirePi.resolve("@earendil-works/pi-tui") } });
+const jiti = createJiti(import.meta.url, { alias: {
+    "@earendil-works/pi-tui": requirePi.resolve("@earendil-works/pi-tui"),
+    "@earendil-works/pi-coding-agent": join(modules, "@earendil-works/pi-coding-agent/dist/index.js"),
+} });
 const originalDir = process.env.PI_CODING_AGENT_DIR;
 const temp = mkdtempSync(join(tmpdir(), "squint-test-"));
 process.env.PI_CODING_AGENT_DIR = temp;
@@ -22,9 +25,12 @@ try {
 	const handlers = new Map();
 	let resolveRenderer, shortcut;
 	squint({
-		on: (name, handler) => handlers.set(name, handler),
+		on: (name, handler) => {
+			const previous = handlers.get(name);
+			handlers.set(name, (...args) => { previous?.(...args); return handler(...args); });
+		},
 		registerMarkdownTransformer() {}, registerCommand() {},
-		registerShortcut: (_key, spec) => { shortcut = spec.handler; },
+		registerShortcut: (key, spec) => { if (key === "super+e") shortcut = spec.handler; },
 		registerToolRenderer: (resolver) => { resolveRenderer = resolver; },
 	});
 	const parent = "saved-codemode";

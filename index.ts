@@ -40,6 +40,7 @@ import {
 import { classify, keyLabel, normalizeKeyId, textOf, TONE_HEX, type Classification, type Tone } from "./logic.ts";
 import { ensureShim } from "./shim.ts";
 import { completions, menuEntries, resolveArg } from "./menu.ts";
+import { registerAgentViews } from "./agents.ts";
 import {
 	CODE_STYLES,
 	DEFAULT_CODE_STYLE,
@@ -601,6 +602,8 @@ export default function squint(pi: ExtensionAPI) {
 		ctx.ui.notify(`squint: ${hit.label}`, "info");
 	};
 
+	const observeAgents = registerAgentViews(pi, activeDirection, styleSegs, key);
+
 	/** How fenced code blocks render. */
 	const pickCodeBlocks = async (ctx: ExtensionCommandContext): Promise<void> => {
 		if (!ctx.hasUI) {
@@ -628,16 +631,20 @@ export default function squint(pi: ExtensionAPI) {
 		const entry = entries[texts.indexOf(picked)];
 		if (!entry) return;
 		if (entry.id === "tools") await pickToolCalls(ctx);
+		else if (entry.id === "agents") await observeAgents(ctx);
 		else await pickCodeBlocks(ctx);
 	};
 
 	pi.registerCommand("squint", {
-		description: `squint — how it draws: "tui" for tool calls (${CHOICES.map((c) => c.id).join(", ")}), "code" for code blocks (${CODE_STYLES.map((s) => s.id).join(", ")}); or a name, or "key <binding>"`,
+		description: `squint — "agents" to observe subagents; "tui" for tool calls, "code" for code blocks; or a mode name or "key <binding>"`,
 		getArgumentCompletions: (prefix: string) => completions(prefix) ?? null,
 		handler: async (args: string, ctx) => {
 			const choice = resolveArg(args);
 
 			switch (choice.kind) {
+				case "agents":
+					await observeAgents(ctx);
+					return;
 				case "menu":
 					await openMenu(ctx);
 					return;

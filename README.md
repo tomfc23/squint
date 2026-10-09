@@ -85,6 +85,7 @@ Either way, `/reload` in a running session picks it up.
 /squint off          hand tool calls back to pi ("/squint code off" does it for code blocks)
 /squint custom       describe a direction; pi builds it with a local preview first
 /squint key ctrl+o   set the expand/collapse shortcut (saved, then reloaded)
+/squint agents       observe subagent transcripts; cycle back to Main to return
 ```
 
 squint draws two things, so `/squint` asks which one first:
@@ -92,6 +93,7 @@ squint draws two things, so `/squint` asks which one first:
 ```
   ❯ Tool calls — rail
     Code blocks — spine
+    Observe agents — read-only subagent transcripts
 ```
 
 Each entry states what that family draws now. Pick one and its own picker opens, current choice marked.
@@ -123,6 +125,28 @@ Behaviour worth knowing:
 - a collapsed **shell** row shows the *tail* of the output, because that is where the answer
   usually is; opening shows it from the top
 - output past 400 lines keeps a count of what is still withheld, even when open
+
+## Observing subagents
+
+**Ctrl+Shift+Right/Left** cycles between Main and the subagents in the current branch.
+`/squint agents` (or **Observe agents** in the menu) opens the first subagent. Inside the
+read-only transcript, **Tab / Shift+Tab** also cycles; **Escape** returns to Main.
+The main agent keeps working while you observe.
+
+A pinned header identifies the agent, unique task number, running/completed/failed/aborted
+status, model, and **READ ONLY** mode. Main's footer says **Observing: Main**.
+Repeated uses of the same agent remain separate views, including parallel tasks and chain steps.
+
+The viewer uses pi's assistant rendering and squint's tool direction. **↑/↓**, **PageUp/PageDown**,
+and the mouse wheel scroll; **Home** goes to the task; **End** follows new output. Click a tool
+row or use the configured expand shortcut (**⌘E** by default) for the latest tool. **t** toggles
+thinking. Input is never sent to a subagent.
+
+Updates arrive as the runner publishes messages and tool results, not token-by-token.
+Finished top-level subagent transcripts restore from saved tool details after reload/resume.
+Nested invocations (such as delegation through codemode) are observable live; pi saves nested
+metadata without result bodies, so those transcripts cannot restore unless their details were persisted.
+
 
 ## Code blocks
 

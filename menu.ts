@@ -21,6 +21,7 @@ export type Pick =
 	/** The family's own picker. */
 	| { kind: "tool-menu" }
 	| { kind: "code-menu" }
+	| { kind: "agents" }
 	| { kind: "tool"; id: ToolMode }
 	| { kind: "code"; id: CodeStyle }
 	| { kind: "key"; value?: string }
@@ -28,7 +29,7 @@ export type Pick =
 	| { kind: "unknown"; value: string };
 
 export interface MenuEntry {
-	id: "tools" | "code";
+	id: "tools" | "code" | "agents";
 	/** The exact line the picker shows, stating what that family draws now. */
 	text: string;
 }
@@ -38,6 +39,7 @@ export function menuEntries(state: { direction: ToolMode; codeBlock: CodeStyle }
 	return [
 		{ id: "tools", text: `Tool calls — ${state.direction}` },
 		{ id: "code", text: `Code blocks — ${state.codeBlock}` },
+		{ id: "agents", text: "Observe agents — read-only subagent transcripts" },
 	];
 }
 
@@ -55,6 +57,7 @@ export function resolveArg(raw: string): Pick {
 
 	if (TOOL_MENU.has(head)) return tail && isDirection(tail) ? { kind: "tool", id: tail } : { kind: "tool-menu" };
 	if (CODE_MENU.has(head)) return tail && isCodeStyle(tail) ? { kind: "code", id: tail } : { kind: "code-menu" };
+	if (head === "agents" && !tail) return { kind: "agents" };
 	if (head === "key") return { kind: "key", ...(tail ? { value: tail } : {}) };
 	if (head === "custom") return { kind: "custom", ...(tail ? { instructions: tail } : {}) };
 
@@ -73,6 +76,7 @@ export function completions(prefix: string): ReadonlyArray<{ value: string; labe
 		...CODE_STYLES.filter((style) => style.id !== "off").map((style) => ({ value: style.id as string, label: `${style.id} — code blocks: ${style.blurb}` })),
 		{ value: "tui", label: "tui — pick how tool calls render" },
 		{ value: "code", label: `code — pick how code blocks render (${CODE_STYLES.map((style) => style.id).join(", ")})` },
+		{ value: "agents", label: "agents — observe subagent transcripts (Ctrl+Shift+←/→ to cycle)" },
 		{ value: "custom", label: "custom — describe a tool call layout; pi builds it with a preview" },
 		{ value: "key", label: "key <binding> — set the expand/collapse shortcut" },
 	];

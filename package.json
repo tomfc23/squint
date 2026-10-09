@@ -23,7 +23,7 @@
   },
   "scripts": {
     "test": "node logic.test.ts && node directions.test.ts && node codeblocks.test.ts && node menu.test.ts",
-    "test:adapter": "node index.test.ts"
+    "test:adapter": "node index.test.ts && node agents.test.ts"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
@@ -31,6 +31,7 @@
   },
   "files": [
     "index.ts",
+    "agents.ts",
     "directions.ts",
     "logic.ts",
     "codeblocks.ts",

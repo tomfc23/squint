@@ -11,10 +11,10 @@ import { completions, menuEntries, resolveArg } from "./menu.ts";
 /* ------------------------------- the menu ------------------------------- */
 
 const entries = menuEntries({ direction: "rail", codeBlock: "spine" });
-assert.deepEqual(entries.map((entry) => entry.id), ["tools", "code"], "the menu offers the two families, tool calls first");
-assert.deepEqual(entries.map((entry) => entry.text), ["Tool calls — rail", "Code blocks — spine"], "each entry states what it draws now");
+assert.deepEqual(entries.map((entry) => entry.id), ["tools", "code", "agents"]);
+assert.deepEqual(entries.slice(0, 2).map((entry) => entry.text), ["Tool calls — rail", "Code blocks — spine"], "each rendering entry states what it draws now");
 assert.deepEqual(
-	menuEntries({ direction: "off", codeBlock: "off" }).map((entry) => entry.text),
+	menuEntries({ direction: "off", codeBlock: "off" }).slice(0, 2).map((entry) => entry.text),
 	["Tool calls — off", "Code blocks — off"],
 	"off is readable in both families",
 );
@@ -23,6 +23,8 @@ assert.deepEqual(
 
 assert.deepEqual(resolveArg(""), { kind: "menu" }, "no argument opens the menu");
 assert.deepEqual(resolveArg("  "), { kind: "menu" }, "whitespace is no argument");
+assert.deepEqual(resolveArg(" agents "), { kind: "agents" });
+assert.deepEqual(completions("ag")?.map((entry) => entry.value), ["agents"]);
 
 // a bare name belongs to whichever family owns it
 assert.deepEqual(resolveArg("rail"), { kind: "tool", id: "rail" }, "a direction name sets tool calls");
