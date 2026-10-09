@@ -128,13 +128,17 @@ Behaviour worth knowing:
 
 ## Observing subagents
 
-**Ctrl+Shift+Right/Left** cycles between Main and the subagents in the current branch.
-`/squint agents` (or **Observe agents** in the menu) opens the first subagent. Inside the
-read-only transcript, **Tab / Shift+Tab** also cycles; **Escape** returns to Main.
-The main agent keeps working while you observe.
+**Ctrl+Shift+Right/Left** cycles only between Main and **running** subagents.
+Completed, failed, and aborted agents are skipped in both directions.
+`/squint agents` (or **Observe agents** in the menu) explicitly opens transcript history;
+**Tab / Shift+Tab** browses that history. In a viewer opened by the arrow shortcut, Tab also
+cycles only running agents. **Escape** returns to Main. Main keeps working while you observe.
 
 A pinned header identifies the agent, unique task number, running/completed/failed/aborted
-status, model, and **READ ONLY** mode. Main's footer says **Observing: Main**.
+status, model, and **READ ONLY** mode. Main's footer shows
+`Observing: Main · 2 running · Ctrl+Shift+←/→` only while subagents are running.
+It follows the observed agent and automatically hides when the last subagent finishes, fails,
+or is aborted. Finished transcripts remain available through `/squint agents`.
 Repeated uses of the same agent remain separate views, including parallel tasks and chain steps.
 
 The viewer uses pi's assistant rendering and squint's tool direction. **↑/↓**, **PageUp/PageDown**,

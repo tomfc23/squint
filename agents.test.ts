@@ -34,6 +34,13 @@ assert.equal(agentStatus(makeAgent()), "running");
 assert.equal(agentStatus({ ...makeAgent(), exitCode: 0 }), "completed");
 assert.equal(agentStatus({ ...makeAgent(), exitCode: 0, stopReason: "length" }), "failed");
 assert.equal(agentStatus({ ...makeAgent(), stopReason: "aborted" }), "aborted");
+const mixed = new AgentTranscripts();
+mixed.update("mixed", { results: [{ ...makeAgent(), exitCode: 0 }, makeAgent(), { ...makeAgent(), exitCode: 1 }, makeAgent(), { ...makeAgent(), stopReason: "aborted" }] });
+assert.equal(mixed.cycle(undefined, 1), "mixed:1", "forward cycling skips completed tasks");
+assert.equal(mixed.cycle(undefined, -1), "mixed:3", "reverse cycling skips failed and aborted tasks");
+assert.equal(mixed.cycle("mixed:1", 1), "mixed:3");
+assert.equal(mixed.cycle("mixed:3", 1), undefined);
+assert.equal(mixed.cycle(undefined, 1, true), "mixed:0", "history remains explicit");
 
 const assistant = { role: "assistant", content: [
 	{ type: "thinking", thinking: "private thought visible on request" },
@@ -92,31 +99,75 @@ const ctx = { mode: "tui", sessionManager: { getBranch: () => [] }, ui: {
 		active = factory(tui, theme, {}, resolve);
 	}); },
 } };
+events.get("session_start")({}, ctx);
+assert.equal(mainStatus, undefined, "no observation label without subagents");
 await open(ctx);
 assert.equal(customCalls, 0);
 assert.ok(notices.pop().includes("no subagent"));
 events.get("tool_execution_update")({ toolCallId: "code/1", parentToolCallId: "code", toolName: "subagent",
-	partialResult: { details: { results: [makeAgent(), makeAgent()] } } });
+	partialResult: { details: { results: [makeAgent(), makeAgent()] } } }, ctx);
+assert.equal(mainStatus, "Observing: Main · 2 running · Ctrl+Shift+←/→", "label counts running subagents");
 const observing = shortcuts.get("ctrl+shift+right")(ctx);
 assert.equal(customCalls, 1);
 assert.ok(active.render(120)[0].includes("task 1/2"));
-events.get("tool_execution_end")({ toolCallId: "code/1", toolName: "subagent",
-	result: { details: { results: [{ ...makeAgent(), exitCode: 1, errorMessage: "test failure" }, makeAgent()] } } });
+assert.equal(mainStatus, "Observing: reviewer #1 · 2 running · Ctrl+Shift+←/→");
+events.get("tool_execution_update")({ toolCallId: "code/1", toolName: "subagent",
+	partialResult: { details: { results: [{ ...makeAgent(), exitCode: 1, errorMessage: "test failure" }, makeAgent()] } } }, ctx);
+assert.equal(mainStatus, "Observing: reviewer #1 · 1 running · Ctrl+Shift+←/→", "finished agent disappears from count during a parallel run");
 assert.ok(active.render(120)[1].includes("failed"));
 assert.ok(active.render(120).join("\n").includes("test failure"));
 active.handleInput("\t");
-assert.ok(active.render(120)[0].includes("task 2/2"));
-assert.ok(active.render(120)[1].includes("failed"), "a terminated invocation cannot leave a placeholder running forever");
+assert.ok(active.render(120)[0].includes("task 1/1"), "running view numbers only agents in its cycling scope");
+assert.equal(mainStatus, "Observing: reviewer #1 · 1 running · Ctrl+Shift+←/→", "footer uses the same running-agent numbering");
 active.handleInput("\t");
 await observing;
+assert.equal(mainStatus, "Observing: Main · 1 running · Ctrl+Shift+←/→");
+const escaped = open(ctx);
+active.handleInput("\x1b");
+await escaped;
+assert.equal(mainStatus, "Observing: Main · 1 running · Ctrl+Shift+←/→", "Escape exits observation without stopping running agents");
+events.get("tool_execution_end")({ toolCallId: "code/1", toolName: "subagent",
+	result: { details: { results: [{ ...makeAgent(), exitCode: 1 }, { ...makeAgent(), exitCode: 0 }] } } }, ctx);
+assert.equal(mainStatus, undefined, "last agent completing automatically hides the footer");
+const beforeFinishedShortcut = customCalls;
+await shortcuts.get("ctrl+shift+right")(ctx);
+await shortcuts.get("ctrl+shift+left")(ctx);
+assert.equal(customCalls, beforeFinishedShortcut, "arrow shortcuts cannot open finished agents");
+const history = open(ctx);
+assert.ok(active.render(120)[0].includes("task 1/2"), "completed transcripts remain observable");
+active.handleInput("\t");
+assert.ok(active.render(120)[0].includes("task 2/2"), "explicit history view can browse completed agents with Tab");
+active.handleInput("\x1b[1;6C"); // Ctrl+Shift+Right
+assert.equal(mainStatus, undefined, "arrow cycling in history returns Main when no agents run");
+await history;
+assert.equal(mainStatus, undefined, "viewing history does not resurrect the running indicator");
+events.get("tool_execution_update")({ toolCallId: "interrupted", toolName: "subagent",
+	partialResult: { details: { results: [makeAgent()] } } }, ctx);
+assert.equal(mainStatus, "Observing: Main · 1 running · Ctrl+Shift+←/→");
+const historyToLive = open(ctx);
+assert.ok(active.render(120)[0].includes("task 1/3"));
+active.handleInput("\x1b[1;6C");
+assert.ok(active.render(120)[0].includes("task 1/1"), "arrow keys switch history numbering to running numbering");
+assert.equal(mainStatus, "Observing: reviewer #1 · 1 running · Ctrl+Shift+←/→");
+events.get("tool_execution_end")({ toolCallId: "interrupted", toolName: "subagent", result: { content: [] } }, ctx);
+assert.equal(mainStatus, undefined, "failed invocation without final details also hides automatically");
+assert.ok(active.render(120)[0].includes("task 1/1"), "a just-finished selected agent keeps a valid index until leaving its view");
+active.handleInput("\x1b");
+await historyToLive;
+events.get("tool_execution_update")({ toolCallId: "aborted", toolName: "subagent",
+	partialResult: { details: { results: [makeAgent()] } } }, ctx);
+events.get("tool_execution_end")({ toolCallId: "aborted", toolName: "subagent",
+	result: { details: { results: [{ ...makeAgent(), exitCode: 1, stopReason: "aborted" }] } } }, ctx);
+assert.equal(mainStatus, undefined, "aborted agents are not running");
 const saved = { type: "message", message: { role: "toolResult", toolCallId: "saved", toolName: "subagent", details: { results: [makeAgent()] } } };
-events.get("session_start")({}, { sessionManager: { getBranch: () => [saved] } });
+events.get("session_start")({}, { ...ctx, sessionManager: { getBranch: () => [saved] } });
+assert.equal(mainStatus, undefined, "resuming saved tool results cannot resurrect a running indicator");
 const resumed = open(ctx);
 assert.ok(active.render(120)[0].includes("task 1/1"));
 events.get("session_shutdown")();
 await resumed;
 events.get("session_start")({}, ctx);
-assert.equal(mainStatus, "Observing: Main");
+assert.equal(mainStatus, undefined, "switching to a branch without subagents clears the label");
 await open(ctx);
 assert.ok(notices.pop().includes("no subagent"), "session change clears old agents");
 await open({ ...ctx, mode: "rpc" });

@@ -43,8 +43,8 @@ export class AgentTranscripts {
 		return changed;
 	}
 
-	cycle(current: string | undefined, delta: number): string | undefined {
-		const ids = [undefined, ...this.agents.keys()];
+	cycle(current: string | undefined, delta: number, includeCompleted = false): string | undefined {
+		const ids = [undefined, ...[...this.agents.values()].filter((agent) => includeCompleted || agentStatus(agent) === "running").map((agent) => agent.id)];
 		const index = Math.max(0, ids.indexOf(current));
 		return ids[(index + delta + ids.length) % ids.length];
 	}
@@ -79,35 +79,51 @@ export function registerAgentViews(pi: ExtensionAPI, direction: () => Direction,
 		}
 		if (changed) screen?.refresh();
 	};
-	pi.on("tool_execution_update", (event) => capture(event.toolCallId, event.toolName, event.partialResult));
-	pi.on("tool_execution_end", (event) => capture(event.toolCallId, event.toolName, event.result, true));
+	const updateStatus = (ctx?: ExtensionContext) => {
+		const count = [...store.agents.values()].filter((agent) => agentStatus(agent) === "running").length;
+		const id = screen?.agentId;
+		const agent = id ? store.agents.get(id) : undefined;
+		const label = agent ? `${agent.agent.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")} #${screen!.agentIds.indexOf(agent.id) + 1}` : "Main";
+		if (ctx?.mode === "tui") ctx.ui.setStatus("squint-agent", count ? `Observing: ${label} · ${count} running · Ctrl+Shift+←/→` : undefined);
+	};
+	pi.on("tool_execution_update", (event, ctx) => {
+		capture(event.toolCallId, event.toolName, event.partialResult);
+		updateStatus(ctx);
+	});
+	pi.on("tool_execution_end", (event, ctx) => {
+		capture(event.toolCallId, event.toolName, event.result, true);
+		updateStatus(ctx);
+	});
 	pi.on("session_start", (_event, ctx) => {
 		close?.();
+		screen = undefined;
 		store.clear();
-		if (ctx.mode === "tui") ctx.ui.setStatus("squint-agent", "Observing: Main");
 		for (const entry of ctx.sessionManager.getBranch()) {
 			if (entry.type === "message" && entry.message.role === "toolResult") {
-				capture(entry.message.toolCallId, entry.message.toolName, entry.message);
+				capture(entry.message.toolCallId, entry.message.toolName, entry.message, true);
 			}
 		}
+		updateStatus(ctx);
 	});
 	pi.on("session_shutdown", () => close?.());
 
-	const open = async (ctx: ExtensionContext, delta = 1) => {
+	const open = async (ctx: ExtensionContext, delta = 1, includeCompleted = true) => {
 		if (ctx.mode !== "tui") {
 			ctx.ui.notify("squint: agent observation needs the terminal UI", "info");
 			return;
 		}
-		if (screen) { screen.cycle(delta); return; }
-		const selected = store.cycle(undefined, delta);
+		if (screen) { screen.cycle(delta, includeCompleted); return; }
+		const selected = store.cycle(undefined, delta, includeCompleted);
 		if (!selected) {
-			ctx.ui.notify("squint: no subagent transcripts in this branch yet", "info");
+			ctx.ui.notify(includeCompleted ? "squint: no subagent transcripts in this branch yet" : "squint: no running subagents", "info");
 			return;
 		}
 		try {
 			await ctx.ui.custom<void>((tui, theme, _keys, done) => {
 				close = () => done();
-				screen = new AgentScreen(store, selected, tui, theme, done, direction, style, expandKey);
+				const finish = () => { screen = undefined; updateStatus(ctx); done(); };
+				screen = new AgentScreen(store, selected, tui, theme, finish, direction, style, expandKey, () => updateStatus(ctx), includeCompleted);
+				updateStatus(ctx);
 				return screen;
 			}, { overlay: true, overlayOptions: { width: "100%", maxHeight: "100%", anchor: "top-left" } });
 		} finally {
@@ -115,8 +131,8 @@ export function registerAgentViews(pi: ExtensionAPI, direction: () => Direction,
 			close = undefined;
 		}
 	};
-	pi.registerShortcut("ctrl+shift+right", { description: "Observe next agent", handler: (ctx) => open(ctx, 1) });
-	pi.registerShortcut("ctrl+shift+left", { description: "Observe previous agent", handler: (ctx) => open(ctx, -1) });
+	pi.registerShortcut("ctrl+shift+right", { description: "Observe next running agent", handler: (ctx) => open(ctx, 1, false) });
+	pi.registerShortcut("ctrl+shift+left", { description: "Observe previous running agent", handler: (ctx) => open(ctx, -1, false) });
 	return open;
 }
 
@@ -133,14 +149,21 @@ export class AgentScreen implements Component {
 
 	constructor(private store: AgentTranscripts, private selected: string, private tui: TUI, private theme: Theme,
 		private done: () => void, private direction: () => Direction, private style: (theme: Theme, line: Seg[]) => string,
-		private expandKey: string) {}
+		private expandKey: string, private onCycle: () => void = () => {}, private includeCompleted = true) {}
+
+	get agentId(): string { return this.selected; }
+	get agentIds(): string[] {
+		return [...this.store.agents.values()].filter((agent) => this.includeCompleted || agentStatus(agent) === "running" || agent.id === this.selected).map((agent) => agent.id);
+	}
 
 	refresh(): void { this.tui.requestRender(); }
 	invalidate(): void { this.cacheKey = ""; this.body.invalidate(); }
-	cycle(delta: number): void {
-		const next = this.store.cycle(this.selected, delta);
+	cycle(delta: number, includeCompleted = this.includeCompleted): void {
+		const next = this.store.cycle(this.selected, delta, includeCompleted);
 		if (!next) { this.done(); return; }
 		this.selected = next;
+		this.includeCompleted = includeCompleted;
+		this.onCycle();
 		this.offset = Infinity;
 		this.invalidate();
 		this.refresh();
@@ -153,8 +176,10 @@ export class AgentScreen implements Component {
 	}
 	handleInput(data: string): void {
 		if (matchesKey(data, "escape")) { this.done(); return; }
-		if (matchesKey(data, "ctrl+shift+right") || matchesKey(data, "tab")) { this.cycle(1); return; }
-		if (matchesKey(data, "ctrl+shift+left") || matchesKey(data, "shift+tab")) { this.cycle(-1); return; }
+		if (matchesKey(data, "ctrl+shift+right")) { this.cycle(1, false); return; }
+		if (matchesKey(data, "ctrl+shift+left")) { this.cycle(-1, false); return; }
+		if (matchesKey(data, "tab")) { this.cycle(1); return; }
+		if (matchesKey(data, "shift+tab")) { this.cycle(-1); return; }
 		if (matchesKey(data, this.expandKey as Parameters<typeof matchesKey>[1]) && this.latestTool) { this.toggle(this.latestTool); return; }
 		if (matchesKey(data, "t")) { this.showThinking = !this.showThinking; this.invalidate(); }
 		const max = Math.max(0, this.lines.length - this.height);
@@ -219,9 +244,10 @@ export class AgentScreen implements Component {
 		}
 		this.height = Math.max(1, (this.tui.terminal.rows || 24) - 4);
 		const offset = Math.min(this.offset, Math.max(0, this.lines.length - this.height));
-		const index = [...this.store.agents.keys()].indexOf(this.selected) + 1;
+		const ids = this.agentIds;
+		const index = ids.indexOf(this.selected) + 1;
 		const plain = (s: string) => s.replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
-		const header = `Agent: ${plain(agent.agent)} · task ${index}/${this.store.agents.size}`;
+		const header = `Agent: ${plain(agent.agent)} · task ${index}/${ids.length}`;
 		return [
 			truncateToWidth(this.theme.fg("accent", header), width),
 			truncateToWidth(this.theme.fg("muted", `READ ONLY · ${agentStatus(agent)} · ${plain(agent.model ?? "unknown")} · Main running independently`), width),
