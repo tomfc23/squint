@@ -167,6 +167,8 @@ interface Live {
 	diff?: string;
 	isError: boolean;
 	pending: boolean;
+	/** Milliseconds pi reported for the finished call (the render context's `durationMs`). */
+	ms?: number;
 	showImages?: boolean;
 }
 
@@ -302,8 +304,6 @@ export default function squint(pi: ExtensionAPI) {
 	const expanded = new Set<string>();
 	const invalidators = new Map<string, () => void>();
 	const live = new Map<string, Live>();
-	const startedAt = new Map<string, number>();
-	const duration = new Map<string, number>();
 	/** Set when a nested call arrives, so its parent's renderer runs again. */
 	const children = new Map<string, Child[]>();
 	const childById = new Map<string, Child>();
@@ -410,17 +410,14 @@ export default function squint(pi: ExtensionAPI) {
 
 	function rowFor(info: Classification, id: string): Row {
 		const current = live.get(id);
-		const start = startedAt.get(id);
-		const finished = duration.get(id);
 		return buildRow(activeDirection(), info, {
 			args: current?.args,
 			text: current?.text ?? "",
 			diff: current?.diff,
 			isError: current?.isError ?? false,
 			pending: current?.pending ?? true,
-			// A pending row shows no time, so the clock is only read for a row that has already
-			// finished — which keeps Date.now() out of the render path entirely.
-			ms: current?.pending ? undefined : (finished ?? (start === undefined ? undefined : Date.now() - start)),
+			// pi measures the call; squint does not clock it itself, so restored rows keep their time.
+			ms: current?.pending ? undefined : current?.ms,
 			open: isOpen(id),
 			nested: nestedRows(id, 0, isOpen(id)),
 		});
@@ -575,11 +572,6 @@ export default function squint(pi: ExtensionAPI) {
 
 	pi.on("tool_execution_end", (event) => {
 		if (!event.parentToolCallId) {
-			const start = startedAt.get(event.toolCallId);
-			if (start !== undefined) {
-				duration.set(event.toolCallId, Date.now() - start);
-				startedAt.delete(event.toolCallId);
-			}
 			invalidateRow(event.toolCallId);
 			return;
 		}
@@ -806,13 +798,16 @@ export default function squint(pi: ExtensionAPI) {
 				const id = context.toolCallId;
 				const current = state(id);
 				current.showImages = context.showImages;
-				const changed = current.result !== result || current.isError !== context.isError || current.pending !== options.isPartial;
+				// pi knows how long the call took — including for a row restored from a saved session, which
+				// never fires the execution events — so its clock is the only one worth reading.
+				const changed = current.result !== result || current.isError !== context.isError || current.pending !== options.isPartial || current.ms !== context.durationMs;
 				if (changed) {
 					current.result = result;
 					current.text = textOf(result.content as Array<{ type: string; text?: string }>);
 					current.diff = (result.details as { diff?: string } | undefined)?.diff;
 					current.isError = context.isError;
 					current.pending = options.isPartial;
+					current.ms = context.durationMs;
 					// New output, so the cached strings for this row are stale.
 					invalidateRow(id);
 				}

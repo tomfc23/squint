@@ -80,7 +80,15 @@ try {
 	assert.equal(legacy.squintImages, undefined, "without a loaded shim, core keeps ownership");
 	await command("images inline", ctx);
 	assert.equal(JSON.parse(readFileSync(join(temp, "squint.json"), "utf8")).images, "inline");
-	console.log("squint adapter: ok — reload/resume restores branches, live output stays minimized");
+	// A restored row carries pi's own duration; showing it must not need live execution events.
+	{
+		const durationRenderer = resolveRenderer("bash", () => undefined);
+		const durationContext = { ...context, toolCallId: "saved-time", state: {}, durationMs: 1234 };
+		const call = durationRenderer.renderCall({ command: "sleep 1" }, theme, durationContext);
+		const body = durationRenderer.renderResult({ content: [], details: undefined }, { isPartial: false }, theme, durationContext);
+		assert.ok([...call.render(120), ...body.render(120)].join("\n").includes("1.2s"), "a row restored from a saved session keeps its duration");
+	}
+	console.log("squint adapter: ok — reload/resume restores branches and durations, live output stays minimized");
 } finally {
 	if (originalDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
 	else process.env.PI_CODING_AGENT_DIR = originalDir;
