@@ -1,10 +1,10 @@
-/** Adapter regression: node index.test.ts (uses the installed pi runtime, no new dependencies). */
+/** Adapter regression: node tests/index.test.ts (uses the installed pi runtime, no new dependencies). */
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { agentDir } from "./shim.ts";
+import { agentDir } from "../src/shim.ts";
 
 const install = join(agentDir(), "install");
 const version = readFileSync(join(install, "current-version"), "utf8").trim();
@@ -21,7 +21,7 @@ process.env.PI_CODING_AGENT_DIR = temp;
 writeFileSync(join(temp, "squint.json"), JSON.stringify({ direction: "rail", key: "super+e", codeBlock: "off" }));
 
 try {
-	const { default: squint } = await jiti.import(new URL("./index.ts", import.meta.url).pathname);
+	const { default: squint } = await jiti.import(new URL("../src/index.ts", import.meta.url).pathname);
 	const handlers = new Map();
 	let resolveRenderer, shortcut, command, sentMessage = "";
 	squint({
@@ -106,7 +106,7 @@ try {
 
 	// Rows are measured by the frame writer's own cell model, so a line can never be refused.
 	{
-		const directions = await jiti.import(new URL("./directions.ts", import.meta.url).pathname);
+		const directions = await jiti.import(new URL("../src/directions.ts", import.meta.url).pathname);
 		const { visibleWidth } = await jiti.import(requirePi.resolve("@earendil-works/pi-tui"));
 		for (const sample of ["plain", "日本語テキスト", "\u{1F680}".repeat(3), "\u2764\uFE0F", "\u{1F1FA}\u{1F1F8}", "a\u0301", "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}", "e\u0301\u0301", "\u0000\u001b[2m"]) {
 			assert.equal(directions.cellWidth(sample), visibleWidth(sample), `agrees with the frame writer on ${JSON.stringify(sample)}`);
@@ -127,6 +127,9 @@ try {
 	{
 		await command("custom a compact two-line direction", { ...ctx, hasUI: true, isIdle: () => true });
 		assert.ok(sentMessage.includes("--bind 127.0.0.1"), "the preview server is told to bind loopback only");
+		assert.ok(sentMessage.includes("src/directions.ts"), "custom layouts target the source directory");
+		assert.ok(sentMessage.includes("node tests/directions.test.ts"), "custom layouts run tests from the repository root");
+		assert.ok(sentMessage.includes(new URL("../src/directions.ts", import.meta.url).pathname), "custom layouts resolve the source path from the extension root");
 	}
 
 	console.log("squint adapter: ok — reload/resume restores branches and durations, live output stays minimized");

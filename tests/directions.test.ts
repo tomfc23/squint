@@ -1,13 +1,13 @@
 /**
- * Runnable self-check for squint's direction layout:  node directions.test.ts
+ * Runnable self-check for squint's direction layout:  node tests/directions.test.ts
  *
  * The whole game here is alignment, so every check is a width or a column claim:
  * a line that overflows the terminal, or a column that does not line up between
  * two rows, is the bug this file exists to catch.
  */
 import assert from "node:assert/strict";
-import { buildRow, DIRECTIONS, cellWidth, clipW, collapsedLimit, layout, padEnd, padStart, segsWidth, type Direction, type Row } from "./directions.ts";
-import { classify } from "./logic.ts";
+import { buildRow, DIRECTIONS, cellWidth, clipW, collapsedLimit, layout, padEnd, padStart, segsWidth, type Direction, type Row } from "../src/directions.ts";
+import { classify } from "../src/logic.ts";
 
 const WIDTHS = [24, 40, 61, 80, 120, 200];
 

@@ -70,7 +70,7 @@ const ok = "✓ done";              // emoji and symbols
 ## 7. An indented code block (four spaces), no fence in sight
 
     npm test
-    node logic.test.ts
+    node tests/logic.test.ts
 
 ## 8. Two blocks with nothing but a line between them, then a block on one line
 

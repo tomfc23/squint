@@ -1,5 +1,5 @@
 /**
- * Runnable self-check for squint's pure logic:  node logic.test.ts
+ * Runnable self-check for squint's pure logic:  node tests/logic.test.ts
  */
 import assert from "node:assert/strict";
 import {
@@ -15,7 +15,7 @@ import {
 	tailLines,
 	textOf,
 	toLines,
-} from "./logic.ts";
+} from "../src/logic.ts";
 
 // classification
 assert.equal(classify("read").kind, "read");

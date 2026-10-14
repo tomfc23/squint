@@ -18,28 +18,19 @@
   "homepage": "https://github.com/tomfc23/squint",
   "pi": {
     "extensions": [
-      "./index.ts"
+      "./src/index.ts"
     ]
   },
   "scripts": {
-    "test": "node logic.test.ts && node directions.test.ts && node codeblocks.test.ts && node menu.test.ts && node index.test.ts && node agents.test.ts && node images.test.ts",
-    "test:adapter": "node index.test.ts && node agents.test.ts && node images.test.ts"
+    "test": "node tests/logic.test.ts && node tests/directions.test.ts && node tests/codeblocks.test.ts && node tests/menu.test.ts && node tests/index.test.ts && node tests/agents.test.ts && node tests/images.test.ts",
+    "test:adapter": "node tests/index.test.ts && node tests/agents.test.ts && node tests/images.test.ts"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*"
   },
   "files": [
-    "index.ts",
-    "agents.ts",
-    "directions.ts",
-    "logic.ts",
-    "codeblocks.ts",
-    "shim.ts",
-    "image-modes.ts",
-    "image-shim.ts",
-    "images.ts",
-    "menu.ts",
+    "src/",
     "README.md"
   ],
   "engines": {

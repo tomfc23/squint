@@ -1,12 +1,12 @@
 /**
- * Runnable self-check for the /squint menu model:  node menu.test.ts
+ * Runnable self-check for the /squint menu model:  node tests/menu.test.ts
  *
  * The command has three rendering families and one entry point. What
  * belongs to which family, and what a bare name means, is decided here rather than inside the
  * pi adapter, so the routing can be checked without a session.
  */
 import assert from "node:assert/strict";
-import { completions, menuEntries, resolveArg } from "./menu.ts";
+import { completions, menuEntries, resolveArg } from "../src/menu.ts";
 
 /* ------------------------------- the menu ------------------------------- */
 

@@ -1,9 +1,9 @@
-// node agents.test.ts — installed Pi components, no model calls or terminal required.
+// node tests/agents.test.ts — installed Pi components, no model calls or terminal required.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { agentDir } from "./shim.ts";
+import { agentDir } from "../src/shim.ts";
 
 const install = join(agentDir(), "install");
 const version = readFileSync(join(install, "current-version"), "utf8").trim();
@@ -14,7 +14,7 @@ const jiti = createJiti(import.meta.url, { alias: {
 	"@earendil-works/pi-tui": requirePi.resolve("@earendil-works/pi-tui"),
 	"@earendil-works/pi-coding-agent": join(modules, "@earendil-works/pi-coding-agent/dist/index.js"),
 } });
-const { AgentTranscripts, AgentScreen, agentStatus, registerAgentViews } = await jiti.import(new URL("./agents.ts", import.meta.url).pathname);
+const { AgentTranscripts, AgentScreen, agentStatus, registerAgentViews } = await jiti.import(new URL("../src/agents.ts", import.meta.url).pathname);
 const piRuntime = await import(join(modules, "@earendil-works/pi-coding-agent/dist/index.js"));
 piRuntime.initTheme("dark", false);
 const { visibleWidth } = await import(requirePi.resolve("@earendil-works/pi-tui"));

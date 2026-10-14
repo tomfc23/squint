@@ -81,7 +81,7 @@ const SETTINGS_FILE = join(AGENT_DIR, "squint.json");
 /** Where this extension lives; quoted back to pi when it builds a custom direction. */
 const HERE = (() => {
 	try {
-		return dirname(fileURLToPath(import.meta.url));
+		return dirname(dirname(fileURLToPath(import.meta.url)));
 	} catch {
 		return join(AGENT_DIR, "extensions", "squint");
 	}
@@ -137,8 +137,8 @@ function customPrompt(instructions: string): string {
 		"",
 		instructions,
 		"",
-		`squint is the extension in ${HERE} (directions.ts, logic.ts, index.ts, README.md). Read the`,
-		`"Adding a direction" section and the existing renderers first. The direction must fit the same`,
+		`squint is the extension in ${HERE} (src/directions.ts, src/logic.ts, src/index.ts, README.md). Read the`,
+		`"Adding a layout" section and the existing renderers first. The direction must fit the same`,
 		"contract: a pure layout returning styled segments, the first line is the head, one segment is",
 		"one physical line, and every line fits the terminal width.",
 		"",
@@ -154,9 +154,9 @@ function customPrompt(instructions: string): string {
 		"   exact dir path and the URL.",
 		"3. Ask me to confirm the preview and stop there. If I ask for changes, revise the preview and",
 		"   ask again; do not touch the extension until I confirm.",
-		`4. On confirmation, implement the direction in ${join(HERE, "directions.ts")}: add the id to`,
+		`4. On confirmation, implement the direction in ${join(HERE, "src", "directions.ts")}: add the id to`,
 		"   `Direction` and `DIRECTIONS`, write the renderer, add the `layout()` case and a",
-		"   `collapsedLimit()` case, then run `node directions.test.ts` and `node logic.test.ts` and fix",
+		"   `collapsedLimit()` case, then run `node tests/directions.test.ts` and `node tests/logic.test.ts` from the extension root and fix",
 		"   until both are green.",
 		"5. Delete the preview: stop the local server, `rm -rf` the exact `squint-preview.*` dir from",
 		"   step 2, then run `test ! -e <dir>` to confirm every file is gone. If that check fails, say so",

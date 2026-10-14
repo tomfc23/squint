@@ -222,9 +222,9 @@ Clone the repository and use Node.js **22.18+**. No test framework or additional
 needed when the supported pi runtime is already installed in the layout described above.
 
 ```bash
-npm test               # All seven self-check suites
-npm run test:adapter   # Adapter, subagent viewer, and image integration checks
-node directions.test.ts # Layout checks only; no installed pi runtime required
+npm test                       # All seven self-check suites
+npm run test:adapter           # Adapter, subagent viewer, and image integration checks
+node tests/directions.test.ts  # Layout checks only; no installed pi runtime required
 ```
 
 The assert-based checks cover layout widths, control-character filtering, honest collapsed previews,
@@ -233,6 +233,18 @@ and fallback rendering. Adapter tests resolve modules from the installed pi rele
 copy in this repository.
 
 ### Source map
+
+```text
+squint/
+├── src/       # Runtime TypeScript; extension entry point: src/index.ts
+├── tests/     # Assert-based self-checks
+├── lab/       # Static design comparisons and bundled fonts
+├── package.json
+├── README.md
+└── LICENSE
+```
+
+All runtime files listed below live in `src/`. Tests live in `tests/` and are not packaged.
 
 | File | Responsibility |
 | --- | --- |
@@ -259,11 +271,11 @@ you would any other code.
 
 To add one manually:
 
-1. Add its ID to `Direction` and `DIRECTIONS` in `directions.ts`. The first entry is the default.
+1. Add its ID to `Direction` and `DIRECTIONS` in `src/directions.ts`. The first entry is the default.
 2. Implement `(row: Row, cols: number, open: boolean, opts) => Seg[][]`. The first line is the header;
    the remaining lines are the body.
 3. Register it in `layout()` and set a `collapsedLimit` where needed.
-4. Run `node directions.test.ts`, then `npm test`. The shared layout checks cover every registered
+4. Run `node tests/directions.test.ts`, then `npm test`. The shared layout checks cover every registered
    direction at multiple widths, both collapsed and expanded.
 
 The static design comparisons live in [`lab/`](lab/), including the

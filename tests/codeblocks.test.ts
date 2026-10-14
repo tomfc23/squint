@@ -1,5 +1,5 @@
 /**
- * Runnable self-check for the code block styles and the renderer shim:  node codeblocks.test.ts
+ * Runnable self-check for the code block styles and the renderer shim:  node tests/codeblocks.test.ts
  *
  * The styles are pure, so they are checked against a stub theme and stub highlighting; the
  * shim is checked against the real stock renderer in the installed pi release, which is the
@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CODE_STYLES, DEFAULT_CODE_STYLE, cellWidth, isCodeStyle, renderCodeBlock, unwrapFence, unwrapQuotedMarkdown, type CodeArea, type CodeStyle } from "./codeblocks.ts";
-import { applyShim, SHIM, shimSource, shimTargets, STOCK } from "./shim.ts";
+import { CODE_STYLES, DEFAULT_CODE_STYLE, cellWidth, isCodeStyle, renderCodeBlock, unwrapFence, unwrapQuotedMarkdown, type CodeArea, type CodeStyle } from "../src/codeblocks.ts";
+import { applyShim, SHIM, shimSource, shimTargets, STOCK } from "../src/shim.ts";
 
 /* ----------------------------- stub theme ------------------------------ */
 
