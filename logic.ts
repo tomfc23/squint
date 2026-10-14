@@ -103,6 +103,18 @@ export function clip(text: string, max = 200): string {
 	return points.length <= max ? text : `${points.slice(0, max - 1).join("")}…`;
 }
 
+/** Every control character squint refuses to draw: C0, C1, DEL and the Unicode line separators. */
+export const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g;
+
+/**
+ * Collapse untrusted text to one physical line: a tab to its two-space stop, every other control
+ * character to a space. The terminal executes escape sequences, so this is the one flattener the
+ * row renderer, the subagent overlay and the code-block styles share.
+ */
+export function flattenText(text: string): string {
+	return text.replace(/\t/g, "  ").replace(CONTROL_CHARS, " ");
+}
+
 function shorten(value: unknown, max = 90): string {
 	const text = typeof value === "string" ? value : value === undefined ? "" : JSON.stringify(value);
 	if (!text) return "";
@@ -227,6 +239,14 @@ const MODIFIER_ORDER = ["ctrl", "shift", "alt", "super"] as const;
 /** pi wants pageUp/pageDown; people type pageup/pagedown. Canonicalise those two. */
 const SPECIAL_KEYS: Record<string, string> = { pageup: "pageUp", pagedown: "pageDown" };
 
+/**
+ * Spellings pi-tui's matcher resolves to the same key event as a reserved pi binding: esc/escape,
+ * return/enter, and the C0 bytes ctrl+[ (ESC), ctrl+m (CR), ctrl+i (TAB), ctrl+j (LF), ctrl+h (BS),
+ * ctrl+_ and ctrl+- (US). pi's own reservation guard compares the id as a string, so registering an
+ * alias would take the reserved keystroke without tripping it.
+ */
+const RESERVED = new Set(["esc", "escape", "return", "enter", "ctrl+[", "ctrl+m", "ctrl+i", "ctrl+j", "ctrl+h", "ctrl+_", "ctrl+-"]);
+
 // Mirrors the key syntax from pi's keybindings reference: modifiers, letters, digits,
 // specials, function keys, and the symbol row.
 const BASE_KEY = /^(?:[a-z0-9]|escape|esc|enter|return|tab|space|backspace|delete|insert|clear|home|end|pageup|pagedown|up|down|left|right|f(?:[1-9]|1[0-2])|[`\-=[\]\\;',./!@#$%^&*()_+|~{}:<>?])$/;
@@ -240,11 +260,16 @@ export function normalizeKeyId(raw: string | undefined): string | undefined {
 	if (parts.length === 0) return undefined;
 	const base = parts[parts.length - 1];
 	if (!BASE_KEY.test(base)) return undefined;
+	if (RESERVED.has(base)) return undefined;
 	const modifiers = parts.slice(0, -1);
 	if (modifiers.some((mod) => !(MODIFIER_ORDER as readonly string[]).includes(mod))) return undefined;
 	if (new Set(modifiers).size !== modifiers.length) return undefined;
 	const ordered = MODIFIER_ORDER.filter((mod) => modifiers.includes(mod));
-	return [...ordered, SPECIAL_KEYS[base] ?? base].join("+");
+	const id = [...ordered, SPECIAL_KEYS[base] ?? base].join("+");
+	if (RESERVED.has(id)) return undefined;
+	// A modifier-less id swallows ordinary typing in pi's editor; only function keys may stand alone.
+	if (!id.includes("+") && !/^f(?:[1-9]|1[0-2])$/.test(base)) return undefined;
+	return id;
 }
 
 const MODIFIER_GLYPH: Record<string, string> = { ctrl: "⌃", shift: "⇧", alt: "⌥", super: "⌘" };

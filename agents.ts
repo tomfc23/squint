@@ -2,7 +2,7 @@ import { AssistantMessageComponent, type ExtensionAPI, type ExtensionContext, ty
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { Container, matchesKey, MouseRegion, Text, truncateToWidth, type Component, type TUI, type TuiMouseEvent } from "@earendil-works/pi-tui";
 import { buildRow, layout, type Direction, type Seg } from "./directions.ts";
-import { classify, keyLabel, textOf } from "./logic.ts";
+import { classify, flattenText, keyLabel, textOf } from "./logic.ts";
 
 interface Message {
 	role: string;
@@ -36,7 +36,9 @@ export class AgentTranscripts {
 			const result = value as Agent;
 			if (!result || typeof result.agent !== "string" || !Array.isArray(result.messages)) return;
 			const id = `${callId}:${index}`;
-			this.agents.set(id, { ...result, id });
+			// render() dereferences m.role and assistant content parts, so a malformed element stored
+			// here would throw out of Component.render and take the pi process with it.
+			this.agents.set(id, { ...result, id, messages: result.messages.filter(drawable) });
 			changed = true;
 		});
 		if (changed) this.revision++;
@@ -53,6 +55,15 @@ export class AgentTranscripts {
 		this.agents.clear();
 		this.revision++;
 	}
+}
+
+/** A stored message render() can safely dereference: an object, with object parts when assistant. */
+function drawable(value: unknown): value is Message {
+	if (!value || typeof value !== "object") return false;
+	const message = value as Message;
+	if (typeof message.role !== "string") return false;
+	if (message.role !== "assistant") return true;
+	return Array.isArray(message.content) && message.content.every((part) => Boolean(part) && typeof part === "object");
 }
 
 export function agentStatus(agent: Agent): string {
@@ -209,11 +220,13 @@ export class AgentScreen implements Component {
 	render(width: number): string[] {
 		const agent = this.store.agents.get(this.selected);
 		if (!agent) return [];
+		// Every field this overlay draws is untrusted: flatten it before it can reach the frame.
+		const plain = (s: string) => flattenText(String(s));
 		const key = `${this.selected}|${this.store.revision}|${width}|${this.direction()}`;
 		if (key !== this.cacheKey) {
 			this.cacheKey = key;
 			this.body = new Container();
-			this.body.addChild(new Text(`Task: ${agent.task}`, 0, 0));
+			this.body.addChild(new Text(`Task: ${plain(agent.task ?? "")}`, 0, 0));
 			const results = new Map(agent.messages.filter((m) => m.role === "toolResult").map((m) => [m.toolCallId, m]));
 			const lastTool = agent.messages.filter((m) => m.role === "assistant").flatMap((m) => m.content).filter((p) => p.type === "toolCall" && p.id && p.name).at(-1);
 			this.latestTool = lastTool ? `${agent.id}/${lastTool.id}` : undefined;
@@ -239,14 +252,13 @@ export class AgentScreen implements Component {
 				}
 			}
 			if (!agent.messages.length) this.body.addChild(new Text(agent.exitCode === -1 ? "Waiting for the first message…" : "No messages recorded.", 0, 0));
-			if (agent.errorMessage || agent.stderr) this.body.addChild(new Text(agent.errorMessage || agent.stderr || "", 0, 0));
+			if (agent.errorMessage || agent.stderr) this.body.addChild(new Text(plain(agent.errorMessage || agent.stderr || ""), 0, 0));
 			this.lines = this.body.render(width);
 		}
 		this.height = Math.max(1, (this.tui.terminal.rows || 24) - 4);
 		const offset = Math.min(this.offset, Math.max(0, this.lines.length - this.height));
 		const ids = this.agentIds;
 		const index = ids.indexOf(this.selected) + 1;
-		const plain = (s: string) => s.replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
 		const header = `Agent: ${plain(agent.agent)} · task ${index}/${ids.length}`;
 		return [
 			truncateToWidth(this.theme.fg("accent", header), width),

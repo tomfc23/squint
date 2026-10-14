@@ -172,4 +172,27 @@ await open(ctx);
 assert.ok(notices.pop().includes("no subagent"), "session change clears old agents");
 await open({ ...ctx, mode: "rpc" });
 assert.ok(notices.pop().includes("terminal UI"));
+// Untrusted transcript fields must not carry terminal escapes into the overlay (the oneLine rule).
+{
+	const evil = new AgentTranscripts();
+	evil.update("evil", { results: [{ ...makeAgent("x\u001b[2J\u001b]0;OWNED\u0007"), exitCode: 1, errorMessage: "bad\u001b]52;c;x\u0007", stderr: "err\u0007" }] });
+	const lines = new AgentScreen(evil, "evil:0", tui, theme, () => {}, () => "rail", style, "super+e").render(120);
+	assert.ok(lines.every((line) => !/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(line)), "no control character reaches the overlay frame");
+	assert.ok(lines.join("\n").includes("bad ]52;c;x"), "the field text is kept, flattened");
+}
+
+// A malformed element must be dropped, not thrown out of Component.render into pi's exit handler.
+{
+	const bad = new AgentTranscripts();
+	bad.update("bad", { results: [
+		{ ...makeAgent(), messages: [null] },
+		{ ...makeAgent("second"), messages: [{ role: "assistant", content: null }] },
+		{ ...makeAgent("third"), messages: [{ role: "assistant", content: [null] }] },
+	] });
+	for (const id of ["bad:0", "bad:1", "bad:2"]) {
+		assert.doesNotThrow(() => new AgentScreen(bad, id, tui, theme, () => {}, () => "rail", style, "super+e").render(120), `${id} renders`);
+	}
+	assert.deepEqual(bad.agents.get("bad:0").messages, [], "a null element is dropped instead of stored");
+}
+
 console.log("squint agents: ok — identity, cycling, transcript, scrolling, live updates, resume, cleanup");

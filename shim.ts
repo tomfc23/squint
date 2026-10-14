@@ -17,7 +17,7 @@
  * an older one from the pristine backup rather than stacking on it. The first install only
  * takes effect after pi restarts, which /squint code says out loud.
  */
-import { copyFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -56,8 +56,8 @@ export interface ShimPatch {
 	action: "present" | "installed" | "pattern-missing";
 }
 
-/** A source already carrying this exact shim version. */
-const isCurrent = (source: string, kind: ShimKind) => source.includes(SHIM[kind].slice(0, 80));
+/** A source already carrying this shim. The whole body, not a prefix: a truncated file is not current. */
+const isCurrent = (source: string, kind: ShimKind) => source.includes(SHIM[kind]);
 
 /**
  * Insert the shim into one renderer source. Pure: the caller owns reading, writing and the
@@ -113,18 +113,25 @@ export function shimTargets(): ShimTarget[] {
 	return targets;
 }
 
+/** The backup, but only while it still looks like pi's own unpatched file. */
+function pristineSource(path: string, kind: ShimKind): string | undefined {
+	const backup = `${path}.orig`;
+	if (!existsSync(backup)) return undefined;
+	const text = readFileSync(backup, "utf8");
+	return text.includes(STOCK[kind]) && !text.includes("__squintCodeBlock") ? text : undefined;
+}
+
 /**
- * The source to patch. The pristine backup is the base only while the file on disk is squint's
- * own older patch — it carries a shim but no longer the stock anchor — so a new shim version
- * replaces the old one instead of stacking on it. In every other state (a pristine file, or a
- * newer pi that changed the renderer) the file wins: pi's own update is never overwritten by a
- * stored copy of an older one.
+ * The source to patch. A file that still carries a squint marker but is not exactly this shim over
+ * the pristine backup is squint's own damaged or outdated patch, so it is rebuilt from the backup.
+ * A file with no marker is pi's, and pi's own update is never overwritten by a stored copy.
  */
 export function shimSource(path: string, kind: ShimKind): string {
-	const backup = `${path}.orig`;
-	if (!existsSync(backup)) return readFileSync(path, "utf8");
 	const current = readFileSync(path, "utf8");
-	return current.includes("__squintCodeBlock") && !current.includes(STOCK[kind]) ? readFileSync(backup, "utf8") : current;
+	const base = pristineSource(path, kind);
+	if (!base || current.includes(STOCK[kind])) return current;
+	if (current === applyShim(base, kind).text) return current;
+	return current.includes("__squintCodeBlock") ? base : current;
 }
 
 export interface ShimResult {
@@ -152,7 +159,10 @@ export function ensureShim(): ShimResult[] {
 			// A source that is the file itself has changed since the backup, so it becomes the pristine
 			// copy; when the backup stood in, it is already pristine and stays untouched.
 			if (source === current) copyFileSync(target.path, `${target.path}.orig`);
-			writeFileSync(target.path, patched.text);
+			// Write beside the target and rename, so an interrupted write cannot truncate pi's file.
+			const temporary = `${target.path}.squint-tmp`;
+			writeFileSync(temporary, patched.text);
+			renameSync(temporary, target.path);
 		}
 		results.push({ path: target.path, kind: target.kind, action: patched.action });
 	}

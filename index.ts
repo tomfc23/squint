@@ -24,7 +24,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
-import { type Component, type KeyId, MouseRegion, parseColor, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { type Component, type KeyId, MouseRegion, parseColor, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import {
 	buildRow,
 	DEFAULT_DIRECTION,
@@ -36,6 +36,7 @@ import {
 	type Ink,
 	type Row,
 	type Seg,
+	useWidthModel,
 } from "./directions.ts";
 import { classify, keyLabel, normalizeKeyId, textOf, TONE_HEX, type Classification, type Tone } from "./logic.ts";
 import { ensureShim } from "./shim.ts";
@@ -57,6 +58,16 @@ import {
 } from "./codeblocks.ts";
 
 const BADGE_FG = "#181a20";
+
+/**
+ * pi-tui's frame writer throws and stops the TUI when a rendered line is wider than the terminal,
+ * and its grapheme/emoji model is the authority on that width. Point the layout module at it so
+ * rows are measured and clipped by the same function that enforces the bound.
+ */
+useWidthModel({
+	widthOf: visibleWidth,
+	clip: (text, room) => (visibleWidth(text) <= room ? text : truncateToWidth(text, room, "…")),
+});
 
 /** Every render mode: a real direction, or "off" for pi's own tool rendering. */
 type Mode = Direction | "off";
@@ -138,8 +149,9 @@ function customPrompt(instructions: string): string {
 		"2. Build a browser simulation of the candidate: one self-contained HTML page (inline CSS and",
 		"   JS) modeled on the squint-tui preview page (`index.html`) — pi's dark theme tokens, the real",
 		"   transcript vocabulary, and the same cases. Put it in a fresh dir created with",
-		"   `mktemp -d \"${TMPDIR:-/tmp}/squint-preview.XXXXXX\"`, serve that dir locally",
-		"   (`python3 -m http.server 0 --directory <dir>`), and print the exact dir path and the URL.",
+		"   `mktemp -d \"${TMPDIR:-/tmp}/squint-preview.XXXXXX\"`, serve that dir on the loopback",
+		"   interface only (`python3 -m http.server 0 --bind 127.0.0.1 --directory <dir>`), and print the",
+		"   exact dir path and the URL.",
 		"3. Ask me to confirm the preview and stop there. If I ask for changes, revise the preview and",
 		"   ask again; do not touch the extension until I confirm.",
 		`4. On confirmation, implement the direction in ${join(HERE, "directions.ts")}: add the id to`,
@@ -364,9 +376,13 @@ export default function squint(pi: ExtensionAPI) {
 	};
 
 	/** Install or repair the renderer shim; true when anything had to be written just now. */
-	const patchedNow = (): boolean => {
+	const patchedNow = (ctx?: ExtensionContext | ExtensionCommandContext): boolean => {
 		try {
-			return ensureShim().some((result) => result.action === "installed");
+			const results = ensureShim();
+			if (results.some((result) => result.action === "pattern-missing")) {
+				ctx?.ui.notify("squint: could not repair the code block shim for this pi build", "warning");
+			}
+			return results.some((result) => result.action === "installed");
 		} catch {
 			// An unwritable install (a read-only home, a sandbox) must not break the session.
 			return false;
@@ -391,7 +407,7 @@ export default function squint(pi: ExtensionAPI) {
 		codeBlock = next;
 		settings.codeBlock = next;
 		saveSettings(settings);
-		if (patchedNow()) {
+		if (patchedNow(ctx)) {
 			ctx.ui.notify(`squint: code blocks are set to "${next}", but the renderer shim was just installed — restart pi to see it`, "warning");
 			return;
 		}
@@ -554,7 +570,7 @@ export default function squint(pi: ExtensionAPI) {
 		}
 		if (direction !== OFF) ctx.ui.setHiddenThinkingLabel("THINK · click to expand");
 		// A pi update ships the stock renderer again, so the shim is put back on every start.
-		if (patchedNow() && codeBlock !== "off") {
+		if (patchedNow(ctx) && codeBlock !== "off") {
 			ctx.ui.notify("squint: re-applied the code block shim after the pi update — restart pi to see code blocks", "info");
 		}
 		try {

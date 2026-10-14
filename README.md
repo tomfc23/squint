@@ -83,7 +83,7 @@ Either way, `/reload` in a running session picks it up.
 /squint code         go straight to the code block picker (spine, card, panel, listing, rule, chip, off)
 /squint card         set a code block style directly
 /squint off          hand tool calls back to pi ("/squint code off" does it for code blocks)
-/squint custom       describe a direction; pi builds it with a local preview first
+/squint custom       describe a direction; pi builds it with a loopback-only local preview first
 /squint key ctrl+o   set the expand/collapse shortcut (saved, then reloaded)
 /squint agents       observe subagent transcripts; cycle back to Main to return
 ```
@@ -217,7 +217,7 @@ projects directory, which regenerates every frame from pi's own theme and `highl
 ## Adding a direction
 
 A direction is a pure layout plus one line of registration. `/squint custom` walks pi through this for
-you — it collects your instructions, shows a locally served HTML simulation (modeled on the
+you — it collects your instructions, shows a loopback-only locally served HTML simulation (modeled on the
 squint-tui preview page) to confirm, implements the direction, runs the tests, deletes the
 simulation, and reports the optimization it made.
 

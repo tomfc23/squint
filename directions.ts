@@ -8,7 +8,7 @@
  * Cells, not pixels: everything here is monospace-terminal arithmetic, because the
  * thing being drawn is a terminal transcript. Wide glyphs count as two columns.
  */
-import { diffLineKind, diffStats, previewLines, summarizeArgs, tailLines, toLines, type Classification, type Kind, type Tone } from "./logic.ts";
+import { diffLineKind, diffStats, flattenText, previewLines, summarizeArgs, tailLines, toLines, type Classification, type Kind, type Tone } from "./logic.ts";
 
 export type Direction = "badge" | "ledger" | "gutter" | "deck" | "rail";
 
@@ -104,10 +104,14 @@ const WIDE: Array<[number, number]> = [
 	[0x1f300, 0x1f64f],
 	[0x1f900, 0x1f9ff],
 	[0x20000, 0x3fffd],
+	// Conservative catch-all: everything above the BMP is two cells. Overcounting only shortens a
+	// line; undercounting makes pi-tui refuse the frame and abort the TUI.
+	[0x10000, 0x10ffff],
 ];
 
 function charWidth(cp: number): number {
-	if (cp === 0x200d || (cp >= 0x0300 && cp <= 0x036f) || (cp >= 0xfe00 && cp <= 0xfe0f)) return 0;
+	if (cp === 0x200d || (cp >= 0x0300 && cp <= 0x036f) || (cp >= 0xfe00 && cp <= 0xfe0e)) return 0;
+	// U+FE0F (emoji presentation) widens the base it follows; the fall-through counts it as one cell.
 	for (const [lo, hi] of WIDE) if (cp >= lo && cp <= hi) return 2;
 	return 1;
 }
@@ -129,10 +133,26 @@ function cpAt(text: string, index: number): number {
 const isNarrow = (code: number): boolean => code < 0x0300;
 
 /**
+ * The frame writer's own measurement, injected by the extension (see useWidthModel). pi-tui throws
+ * and stops the TUI when a rendered line is wider than the terminal, so a real session must be
+ * measured by that function; the table above is the dependency-free fallback used by plain-node
+ * tests.
+ */
+let measure: ((text: string) => number) | undefined;
+let clipBy: ((text: string, room: number) => string) | undefined;
+
+/** Point this module at pi-tui's visibleWidth/truncateToWidth so both ends agree on cells. */
+export function useWidthModel(model: { widthOf: (text: string) => number; clip: (text: string, room: number) => string }): void {
+	measure = model.widthOf;
+	clipBy = model.clip;
+}
+
+/**
  * Cells this text occupies in a terminal. Single pass, index-based, no allocation: every line of
  * every visible row goes through here on a redraw, so it has to stay O(n) and cheap.
  */
 export function cellWidth(text: string): number {
+	if (measure) return measure(text);
 	let w = 0;
 	for (let i = 0; i < text.length; ) {
 		const code = text.charCodeAt(i);
@@ -165,6 +185,8 @@ function cutTo(text: string, room: number): string {
 
 export function clipW(text: string, max: number): string {
 	if (max <= 0) return "";
+	// With the frame writer's own clipper injected, the cut lands where pi-tui would cut it.
+	if (clipBy) return clipBy(text, max);
 	// Measure once. The walk stops as soon as the budget is spent, so a long line costs O(max), not
 	// O(length); the old version re-measured the growing prefix on every character.
 	let w = 0;
@@ -587,12 +609,8 @@ function nestedBlock(row: Row, cols: number, open: boolean, opts: Required<Layou
  * could clear the screen or retitle the window. The rule is enforced once, here, rather than in
  * each direction that happens to render a summary.
  * ------------------------------------------------------------------ */
-const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g;
-
-/** Collapse untrusted text to one line: newlines to a space, a tab to its two-space stop. */
-function oneLine(text: string): string {
-	return text.replace(/\t/g, "  ").replace(CONTROL, " ");
-}
+/** Collapse untrusted text to one line; the flattener lives in logic.ts so every sink shares it. */
+const oneLine = flattenText;
 
 function oneLineRow(row: Row): Row {
 	return {

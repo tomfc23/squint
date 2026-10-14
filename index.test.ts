@@ -23,7 +23,7 @@ writeFileSync(join(temp, "squint.json"), JSON.stringify({ direction: "rail", key
 try {
 	const { default: squint } = await jiti.import(new URL("./index.ts", import.meta.url).pathname);
 	const handlers = new Map();
-	let resolveRenderer, shortcut, command;
+	let resolveRenderer, shortcut, command, sentMessage = "";
 	squint({
 		on: (name, handler) => {
 			const previous = handlers.get(name);
@@ -32,6 +32,7 @@ try {
 		registerMarkdownTransformer() {}, registerCommand: (_name, spec) => { command = spec.handler; },
 		registerShortcut: (key, spec) => { if (key === "super+e") shortcut = spec.handler; },
 		registerToolRenderer: (resolver) => { resolveRenderer = resolver; },
+		sendUserMessage: (message) => { sentMessage = message; },
 	});
 	const parent = "saved-codemode";
 	const branch = [{ type: "message", message: {
@@ -101,6 +102,31 @@ try {
 		}
 		const unpadded = padRenderer.renderCall({ command: "ls" }, theme, { ...padContext, outputPad: 0 }).render(80);
 		assert.ok(unpadded.every((line) => !line.startsWith(" ")), "outputPad 0 leaves no margin");
+	}
+
+	// Rows are measured by the frame writer's own cell model, so a line can never be refused.
+	{
+		const directions = await jiti.import(new URL("./directions.ts", import.meta.url).pathname);
+		const { visibleWidth } = await jiti.import(requirePi.resolve("@earendil-works/pi-tui"));
+		for (const sample of ["plain", "日本語テキスト", "\u{1F680}".repeat(3), "\u2764\uFE0F", "\u{1F1FA}\u{1F1F8}", "a\u0301", "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}", "e\u0301\u0301", "\u0000\u001b[2m"]) {
+			assert.equal(directions.cellWidth(sample), visibleWidth(sample), `agrees with the frame writer on ${JSON.stringify(sample)}`);
+		}
+		const emojiRow = { label: "SHELL", tone: "gold", summary: "\u{1F680}".repeat(20) + " tail", count: "1 lines", time: "1ms", state: "ok",
+			preview: ["\u2764\uFE0F".repeat(30)], hidden: [], hiddenCount: 0, hiddenLabel: "more" };
+		for (const { id } of directions.DIRECTIONS) {
+			for (const width of [24, 40, 61, 80]) {
+				for (const line of directions.layout(id, emojiRow, width, false)) {
+					const flat = line.map((s) => s.t).join("");
+					assert.ok(visibleWidth(flat) <= width, `${id}@${width}: ${visibleWidth(flat)} cells`);
+				}
+			}
+		}
+	}
+
+	// The preview instruction must keep the model's local server on the loopback interface.
+	{
+		await command("custom a compact two-line direction", { ...ctx, hasUI: true, isIdle: () => true });
+		assert.ok(sentMessage.includes("--bind 127.0.0.1"), "the preview server is told to bind loopback only");
 	}
 
 	console.log("squint adapter: ok — reload/resume restores branches and durations, live output stays minimized");

@@ -130,6 +130,16 @@ for (const { id } of CODE_STYLES) {
 	assert.deepEqual([...new Set(renderCodeBlock(context("card"), CODE, "日本語", 74)!.map(widthOf))], [74], "a wide label still closes the card at the right column");
 }
 
+// A fenced block's code and its info string are untrusted: no control byte may reach the frame.
+{
+	const evil = renderCodeBlock(context("spine"), "a\u001b[2Jb\u0007c", "py\u001b]0;x\u0007", 74)!;
+	const text = plain(evil).join("\n");
+	// Styles are SGR escapes by design; what must not survive is any other control character.
+	assert.ok(plain(evil).every((line) => !/\u001b(?!\[[0-9;]*m)|[\u0000-\u0008\u000b-\u001a\u001c-\u001f\u007f-\u009f\u2028\u2029]/.test(line)), "no injected control character survives the code-block path");
+	assert.ok(text.includes("a[2Jb"), "the code text itself is kept");
+	assert.ok(text.includes("py ]0;x"), "the label is kept, flattened onto one line");
+}
+
 // card: closed, every rail the same width, padding inside the right edge
 {
 	const lines = renderCodeBlock(context("card"), CODE, "ts", 74)!;
@@ -249,10 +259,18 @@ assert.ok(SHIM.minified.includes("catch{}") && SHIM.pretty.includes("catch {"), 
 	const pristine = wrap(stockPretty);
 	writeFileSync(`${path}.orig`, pristine);
 	writeFileSync(path, applyShim(pristine, "pretty").text);
-	assert.equal(shimSource(path, "pretty"), pristine, "the backup stands in while the file is the backup plus the shim");
+	assert.equal(shimSource(path, "pretty"), applyShim(pristine, "pretty").text, "a file that is exactly this shim needs no rewrite");
 	const newer = `${pristine}\n// pi changed this file in place\n`;
 	writeFileSync(path, newer);
 	assert.equal(shimSource(path, "pretty"), newer, "a file that changed under the backup wins over the stored copy");
+	// A truncated or outdated shim must not read as current: shimSource falls back to the backup.
+	const patched = applyShim(pristine, "pretty").text;
+	assert.equal(applyShim(patched, "pretty").action, "present", "the complete shim is current");
+	writeFileSync(path, patched.slice(0, 215));
+	assert.equal(applyShim(patched.slice(0, 215), "pretty").action, "pattern-missing", "a truncated shim is not current");
+	assert.equal(shimSource(path, "pretty"), pristine, "a truncated shim is rebuilt from the pristine backup");
+	writeFileSync(path, patched.replace("squintLines", "squintLinesOld"));
+	assert.equal(shimSource(path, "pretty"), pristine, "an outdated shim is rebuilt from the pristine backup");
 	rmSync(dir, { recursive: true, force: true });
 }
 

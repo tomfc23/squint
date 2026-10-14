@@ -8,11 +8,27 @@ export function attachments(content: ImageBlock[], args: unknown): Attachment[] 
 	const label = typeof path === "string" ? path.replace(/[\x00-\x1f\x7f-\x9f]/g, " ") : "Image";
 	return content.filter((block) => block.type === "image").map((block, i) => ({ block, label: `${label}${i ? ` · ${i + 1}` : ""}` }));
 }
+/** Strict base64, as the terminal's image protocol requires: a BEL or ESC inside would end it early. */
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+/** The image types pi-tui can encode; anything else has no protocol path and no dimensions. */
+const SUPPORTED_MIME = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+/**
+ * The payload may be spliced verbatim into an OSC 1337 / APC _G sequence, so only strict base64
+ * with a supported type is allowed through; everything else falls back to the text placeholder.
+ */
+function safeImage(block: ImageBlock): { data: string; mimeType: string } | undefined {
+	const { data, mimeType } = block;
+	if (typeof data !== "string" || typeof mimeType !== "string") return undefined;
+	if (!SUPPORTED_MIME.has(mimeType) || data.length === 0 || data.length % 4 !== 0) return undefined;
+	return BASE64.test(data) ? { data, mimeType } : undefined;
+}
+
 function preview(item: Attachment, theme: Theme, height: number): Component {
-	const { data, mimeType } = item.block;
-	const dimensions = data && mimeType ? getImageDimensions(data, mimeType) : undefined;
-	if (!dimensions || dimensions.widthPx <= 0 || dimensions.heightPx <= 0 || !data || !mimeType) return new Text(theme.fg("toolOutput", "Image preview unavailable"), 0, 0);
-	return new Image(data, mimeType, { fallbackColor: (s) => theme.fg("toolOutput", s) }, { maxWidthCells: 100, maxHeightCells: height }, dimensions);
+	const safe = safeImage(item.block);
+	const dimensions = safe ? getImageDimensions(safe.data, safe.mimeType) : undefined;
+	if (!safe || !dimensions || dimensions.widthPx <= 0 || dimensions.heightPx <= 0) return new Text(theme.fg("toolOutput", "Image preview unavailable"), 0, 0);
+	return new Image(safe.data, safe.mimeType, { fallbackColor: (s) => theme.fg("toolOutput", s) }, { maxWidthCells: 100, maxHeightCells: height }, dimensions);
 }
 /** Cached Image instances retain IDs and transcoded data across typing and redraws. */
 export class ImageResult implements Component {

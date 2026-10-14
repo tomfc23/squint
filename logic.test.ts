@@ -62,7 +62,17 @@ assert.equal(clip("ab\u{1F600}cd", 4), "ab\u{1F600}…", "clipping never splits 
 assert.equal(normalizeKeyId("super+e"), "super+e");
 assert.equal(normalizeKeyId("Ctrl+Shift+X"), "ctrl+shift+x", "case and modifier order are normalised");
 assert.equal(normalizeKeyId("shift+ctrl+x"), "ctrl+shift+x");
-assert.equal(normalizeKeyId("pageup"), "pageUp", "pi's own spelling is restored");
+assert.equal(normalizeKeyId("ctrl+pageup"), "ctrl+pageUp", "pi's own spelling is restored");
+assert.equal(normalizeKeyId("esc"), undefined, "esc resolves to the reserved interrupt key");
+assert.equal(normalizeKeyId("escape"), undefined, "escape is reserved");
+assert.equal(normalizeKeyId("return"), undefined, "return resolves to the reserved submit key");
+assert.equal(normalizeKeyId("enter"), undefined, "enter is reserved");
+assert.equal(normalizeKeyId("ctrl+["), undefined, "ctrl+[ is the escape byte");
+assert.equal(normalizeKeyId("ctrl+m"), undefined, "ctrl+m is the carriage-return byte");
+assert.equal(normalizeKeyId("ctrl+i"), undefined, "ctrl+i is the tab byte");
+assert.equal(normalizeKeyId("e"), undefined, "a bare letter would swallow ordinary typing");
+assert.equal(normalizeKeyId("up"), undefined, "a bare arrow would swallow navigation");
+assert.equal(normalizeKeyId("f5"), "f5", "a function key may still stand alone");
 assert.equal(normalizeKeyId("ctrl+o"), "ctrl+o");
 assert.equal(normalizeKeyId("ctrl+ctrl+x"), undefined, "a repeated modifier is not a key");
 assert.equal(normalizeKeyId("hyper+x"), undefined);

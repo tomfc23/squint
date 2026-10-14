@@ -69,6 +69,15 @@ try {
 	tui.setCapabilities({ ...oldCaps, images: "kitty" });
 	const missing = new ImageResult(body, attachments([{ type: "image" }], {}), theme, () => "inline", () => false, true, "click to");
 	assert.equal(missing.render(80).length, 3, "missing images reserve no empty rows");
+	// Data that is not strict base64 would be spliced into the image control sequence verbatim.
+	const poisoned = new ImageResult(body, attachments([{ type: "image", data: "iVBORw0KGgo\u0007\u001b]52;c;cHduZWQ=\u001b\\", mimeType: "image/png" }], {}), theme, () => "inline", () => false, true, "click to");
+	const poisonedLines = poisoned.render(80).join("\n");
+	assert.ok(!poisonedLines.includes("\u001b]52"), "an injected OSC never reaches the frame");
+	assert.ok(!poisonedLines.includes("\u0007"), "an injected BEL never reaches the frame");
+	assert.ok(poisonedLines.includes("Image preview unavailable"), "a non-base64 payload falls back to text");
+	// A type pi-tui cannot encode has no protocol path either.
+	const unsupported = new ImageResult(body, attachments([{ type: "image", data: png, mimeType: "image/svg+xml" }], {}), theme, () => "inline", () => false, true, "click to");
+	assert.ok(unsupported.render(80).join("\n").includes("Image preview unavailable"), "an unsupported type falls back to text");
 	// Verify actual core composition: opt-in ownership suppresses duplicates, renderer failures restore core.
 	const { initTheme } = await jiti.import(join(modules, "@earendil-works/pi-coding-agent/dist/modes/interactive/theme/theme.js"));
 	initTheme("dark", false);

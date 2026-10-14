@@ -24,6 +24,7 @@
  * This module imports nothing at runtime: it is the unit under codeblocks.test.ts.
  */
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import { flattenText } from "./logic.ts";
 
 export type CodeStyle = "off" | "spine" | "card" | "panel" | "listing" | "rule" | "chip";
 
@@ -128,6 +129,13 @@ export function cellWidth(text: string): number {
 
 const pad = (n: number) => " ".repeat(Math.max(0, n));
 
+/** pi's own sanitizeBinaryOutput charset: every control character except tab and newline. */
+const BINARY = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g;
+/** The info string is drawn on one line, so tabs and newlines go too. */
+const flattenLabel = flattenText;
+/** Drop the control bytes pi refuses to draw; code keeps its tab and newline structure. */
+const flattenCode = (text: string) => text.replace(BINARY, "");
+
 /** A language label clipped to `room` cells: a fence's info string is arbitrary text. */
 function clipLabel(text: string, room: number, widthOf: (text: string) => number): string {
 	if (widthOf(text) <= room) return text;
@@ -146,16 +154,16 @@ function clipLabel(text: string, room: number, widthOf: (text: string) => number
 export function renderCodeBlock(context: CodeContext, code: string, lang: string | undefined, width: number): CodeLines | undefined {
 	const { style, theme, area, ink } = context;
 	if (style === "off") return undefined;
-	const unwrapped = unwrapFence(code.replace(/\r\n?/g, "\n").replace(/\n$/, ""));
+	const unwrapped = unwrapFence(flattenCode(code.replace(/\r\n?/g, "\n")).replace(/\n$/, ""));
 	const text = unwrapped.text;
 	// After unwrapping, the code's own language is the one to highlight.
 	const highlightedLang = unwrapped.lang ?? lang;
 	const lines = area.highlightCode(text, highlightedLang);
 	if (lines.length === 0) lines.push("");
 	const widthOf = context.width ?? cellWidth;
-	// The label is measured in cells and clipped, so a wide or long info string cannot tear the
-	// boundary a style claims to respect.
-	const label = clipLabel((unwrapped.lang ?? lang)?.trim() ?? "", Math.max(1, width - 6), widthOf);
+	// The label is flattened, measured in cells and clipped, so an untrusted info string can neither
+	// tear the boundary a style claims to respect nor carry an escape sequence into the frame.
+	const label = clipLabel(flattenLabel((unwrapped.lang ?? lang)?.trim() ?? ""), Math.max(1, width - 6), widthOf);
 	const wrapTo = (line: string, room: number): string[] =>
 		widthOf(line) <= room || !context.wrap ? [line] : context.wrap(line, room);
 	const painted = (value: string) => theme.style(value, { fg: theme.colors.mdCodeBlockBorder });

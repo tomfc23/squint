@@ -58,6 +58,10 @@ assert.equal(cellWidth("abc"), 3);
 assert.equal(cellWidth("…"), 1, "ellipsis is one cell");
 assert.equal(cellWidth("日本"), 4, "wide glyphs are two cells");
 assert.equal(cellWidth("e\u0301"), 1, "a combining mark adds nothing");
+// The frame writer's own model is the authority; these are the glyphs the private table got wrong.
+for (const glyph of ["\u{1F680}", "\u2764\uFE0F", "\u{1F1FA}", "\u{1FA70}", "\u{1F004}"]) {
+	assert.equal(cellWidth(glyph), 2, `emoji ${glyph} is two cells`);
+}
 assert.equal(clipW("abcdef", 4), "abc…");
 assert.equal(clipW("abc", 4), "abc");
 assert.equal(clipW("abcdef", 1), "…");
