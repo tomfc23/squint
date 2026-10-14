@@ -118,6 +118,18 @@ for (const { id } of CODE_STYLES) {
 	assert.deepEqual([...new Set(wide.map((line) => widthOf(line)))], [74], "a line of wide glyphs still closes the card at the right column");
 }
 
+// A language label is arbitrary fence text: measured in cells and clipped, so a wide glyph cannot
+// tear the top rail and a long one cannot run past the width the style claims.
+{
+	for (const lang of ["日本語", "x".repeat(80)]) {
+		for (const style of ["card", "listing", "rule", "panel", "spine"] as const) {
+			const lines = renderCodeBlock(context(style), CODE, lang, 74)!;
+			assert.ok(Math.max(...lines.map(widthOf)) <= 74, `${style}: a ${lang.length}-char label stays inside the width`);
+		}
+	}
+	assert.deepEqual([...new Set(renderCodeBlock(context("card"), CODE, "日本語", 74)!.map(widthOf))], [74], "a wide label still closes the card at the right column");
+}
+
 // card: closed, every rail the same width, padding inside the right edge
 {
 	const lines = renderCodeBlock(context("card"), CODE, "ts", 74)!;

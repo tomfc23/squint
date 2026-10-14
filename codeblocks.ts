@@ -128,6 +128,17 @@ export function cellWidth(text: string): number {
 
 const pad = (n: number) => " ".repeat(Math.max(0, n));
 
+/** A language label clipped to `room` cells: a fence's info string is arbitrary text. */
+function clipLabel(text: string, room: number, widthOf: (text: string) => number): string {
+	if (widthOf(text) <= room) return text;
+	let out = "";
+	for (const char of text) {
+		if (widthOf(out + char) > room - 1) break;
+		out += char;
+	}
+	return `${out}…`;
+}
+
 /**
  * Layout one fenced code block. `undefined` means "pi draws it", which is what an unknown
  * style, empty content, or a caller in trouble must get.
@@ -141,8 +152,10 @@ export function renderCodeBlock(context: CodeContext, code: string, lang: string
 	const highlightedLang = unwrapped.lang ?? lang;
 	const lines = area.highlightCode(text, highlightedLang);
 	if (lines.length === 0) lines.push("");
-	const label = (unwrapped.lang ?? lang)?.trim();
 	const widthOf = context.width ?? cellWidth;
+	// The label is measured in cells and clipped, so a wide or long info string cannot tear the
+	// boundary a style claims to respect.
+	const label = clipLabel((unwrapped.lang ?? lang)?.trim() ?? "", Math.max(1, width - 6), widthOf);
 	const wrapTo = (line: string, room: number): string[] =>
 		widthOf(line) <= room || !context.wrap ? [line] : context.wrap(line, room);
 	const painted = (value: string) => theme.style(value, { fg: theme.colors.mdCodeBlockBorder });
@@ -161,7 +174,7 @@ export function renderCodeBlock(context: CodeContext, code: string, lang: string
 			// and the rails above and below close on the same column.
 			const body = Math.max(4, width - 4);
 			const top = `╭─${label ? ` ${label} ` : ""}`;
-			const out: CodeLines = [painted(`${top}${"─".repeat(Math.max(0, width - top.length - 1))}╮`)];
+			const out: CodeLines = [painted(`${top}${"─".repeat(Math.max(1, width - widthOf(top) - 1))}╮`)];
 			for (const line of lines) {
 				// A line that does not fit becomes rows, so the card stays closed at both rails.
 				for (const part of wrapTo(line, body)) {
@@ -184,9 +197,10 @@ export function renderCodeBlock(context: CodeContext, code: string, lang: string
 		}
 
 		case "listing": {
-			const out: CodeLines = label
-				? [painted(label) + pad(width - widthOf(label) - `${lines.length} lines`.length) + dim(`${lines.length} lines`)]
-				: [];
+			// The header carries the label and the line count, so the label gets what the count leaves.
+			const count = `${lines.length} lines`;
+			const title = clipLabel(label, Math.max(1, width - count.length - 1), widthOf);
+			const out: CodeLines = title ? [painted(title) + pad(width - widthOf(title) - count.length) + dim(count)] : [];
 			const blank = " ".repeat(gutter + 1);
 			lines.forEach((line, index) => {
 				const parts = wrapTo(line, Math.max(16, width - gutter - 3));
