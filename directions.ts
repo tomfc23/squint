@@ -230,6 +230,8 @@ function fit(left: Seg[], right: Seg[], cols: number, fill = " "): Seg[] {
  * ------------------------------------------------------------------ */
 const MAX_LINE = 200;
 const EXPANDED_LIMIT = 400;
+/** A collapsed diff shows this many changed lines; opening shows up to EXPANDED_LIMIT rows. */
+const DIFF_COLLAPSED_LIMIT = 10;
 /**
  * A nested child — a tool a codemode script or subagent ran — gets one preview line while its
  * transcript parent is collapsed: the parent row already owns the space, and a read or grep
@@ -293,9 +295,12 @@ export function buildRow(direction: Direction, info: Classification, input: RowI
 	let hiddenLabel = "more";
 
 	if (model) {
-		// Collapsed shows the changed lines; the context lines are what the open reveals.
-		hiddenCount = input.open ? 0 : model.rows.filter((r) => r.t === "ctx").length;
-		hiddenLabel = "context lines";
+		// Collapsed shows changed lines only, capped; whatever that slice leaves out is counted, so a
+		// diff with more changes than the cap cannot hide them without saying so.
+		const shown = input.open ? model.rows.slice(0, EXPANDED_LIMIT) : model.rows.filter((r) => r.t !== "ctx").slice(0, DIFF_COLLAPSED_LIMIT);
+		hiddenCount = Math.max(0, model.rows.length - shown.length);
+		// Naming context lines is the honest wording only while every withheld row is context.
+		hiddenLabel = model.rows.filter((r) => r.t === "ctx").length === hiddenCount ? "context lines" : "lines";
 	} else if (limit === 0) {
 		// Ledger: nothing until the row is opened.
 		hidden = list.slice(0, EXPANDED_LIMIT);
@@ -359,12 +364,10 @@ function hintSegs(row: Row, open: boolean, keyHint: (action: string) => string):
 	return [seg(more + keyHint(open ? "to collapse" : "to expand"), "dim")];
 }
 
-/** Collapsed shows changed lines only; context arrives with the open. Mirrors diffPreview(). */
+/** Collapsed shows changed lines only; context arrives with the open. Mirrors buildRow's count. */
 function diffRows(row: Row, open: boolean): DiffRow[] {
 	const rows = row.diff?.rows ?? [];
-	// Collapsed shows changed lines only, capped like the extension's own collapsed edit limit;
-	// context arrives with the open. Mirrors diffPreview().
-	return open ? rows.slice(0, 400) : rows.filter((r) => r.t !== "ctx").slice(0, 10);
+	return open ? rows.slice(0, EXPANDED_LIMIT) : rows.filter((r) => r.t !== "ctx").slice(0, DIFF_COLLAPSED_LIMIT);
 }
 
 const DIFF_INK: Record<DiffRow["t"], Ink> = { add: "add", del: "del", ctx: "muted" };

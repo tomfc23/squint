@@ -274,6 +274,25 @@ for (const { id } of DIRECTIONS) {
 	assert.equal(wide.filter((l) => l.includes("log(s)")).length, 1, `${id}: the command appears on exactly one line`);
 }
 
+/* ---- a collapsed diff states the changed lines it is not showing ----- */
+{
+	// 50 changed lines and no context: the collapsed slice shows 10, so the other 40 must be counted.
+	const added = Array.from({ length: 50 }, (_, i) => `+line ${i + 1}`).join("\n");
+	for (const { id } of DIRECTIONS) {
+		const row = buildRow(id, classify("edit"), { args: { path: "big.ts" }, text: "", diff: added, isError: false, pending: false, ms: 5, open: false });
+		assert.equal(row.hiddenCount, 40, `${id}: the withheld changed lines are counted`);
+		assert.equal(row.hiddenLabel, "lines", `${id}: and they are not called context lines`);
+		const closed = layout(id, row, 100, false).map((l) => l.map((s) => s.t).join("")).join("\n");
+		const opened = layout(id, row, 100, true).map((l) => l.map((s) => s.t).join("")).join("\n");
+		assert.ok(opened.includes("line 50"), `${id}: opening reveals the rest`);
+		if (id === "ledger") assert.ok(closed.includes("▸"), "ledger: the chevron says the row opens");
+		else assert.ok(closed.includes("40 lines"), `${id}: the collapsed row says what it hides`);
+	}
+	// A diff that withholds only context keeps the wording it always had.
+	const withContext = buildRow("rail", classify("edit"), { args: {}, text: "", diff: "+1 added\n-2 removed\n 3 context\n 4 context", isError: false, pending: false, ms: 5, open: false });
+	assert.deepEqual([withContext.hiddenCount, withContext.hiddenLabel], [2, "context lines"]);
+}
+
 /* ---- output past the cap keeps an honest count ---------------------- */
 {
 	const hugeText = Array.from({ length: 500 }, (_, i) => `l${i}`).join("\n");
