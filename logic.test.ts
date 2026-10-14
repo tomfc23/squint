@@ -7,7 +7,6 @@ import {
 	classify,
 	clip,
 	diffLineKind,
-	diffPreview,
 	diffStats,
 	keyLabel,
 	normalizeKeyId,
@@ -47,9 +46,6 @@ const diff = "+1 added\n-2 removed\n 3 context";
 assert.deepEqual(diffStats(diff), { added: 1, removed: 1 });
 assert.equal(diffLineKind("+++ file"), "ctx");
 assert.equal(diffLineKind("--- file"), "ctx");
-assert.deepEqual(diffPreview(diff, 10).shown, ["+1 added", "-2 removed"]);
-assert.deepEqual(diffPreview(diff, 10, true).shown, ["+1 added", "-2 removed", " 3 context"]);
-assert.equal(diffPreview(diff, 1).hidden, 1);
 
 // previews
 assert.deepEqual(previewLines(["a", "b", "c"], 2), { shown: ["a", "b"], hidden: 1 });

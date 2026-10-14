@@ -218,14 +218,6 @@ export function diffStats(diff: string): { added: number; removed: number } {
 	return { added, removed };
 }
 
-/** Diff lines to show: only the changed ones when collapsed, the whole diff when expanded. */
-export function diffPreview(diff: string, limit: number, includeContext = false): Preview {
-	const all = diff.split("\n").filter((line) => line !== "");
-	const changes = all.filter((line) => diffLineKind(line) !== "ctx");
-	const source = includeContext || changes.length === 0 ? all : changes;
-	return previewLines(source, limit);
-}
-
 /* ------------------------------------------------------------------ *
  * key bindings — pure parsing so /squint can validate what the user types
  * ------------------------------------------------------------------ */
