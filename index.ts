@@ -258,6 +258,29 @@ class SquintRow implements Component {
 	}
 }
 
+/**
+ * pi indents its own rows and the assistant text by `outputPad` (0 or 1), and asks a
+ * `renderShell: "self"` renderer to do that for itself. One thin wrapper: the row lays out one
+ * pad narrower and every line carries the margin, so nothing downstream has to know.
+ */
+class Padded implements Component {
+	constructor(private pad: number, private child: Component) {}
+
+	invalidate(): void {
+		this.child.invalidate();
+	}
+
+	render(cols: number): string[] {
+		const prefix = " ".repeat(this.pad);
+		return this.child.render(Math.max(1, cols - this.pad)).map((line) => prefix + line);
+	}
+}
+
+const padded = (component: Component, pad: number): Component => (pad > 0 ? new Padded(pad, component) : component);
+
+/** pi's output padding from the render context; 0 on a runtime that does not report it. */
+const padOf = (context: { outputPad?: number }): number => Math.max(0, Math.floor(context.outputPad ?? 0));
+
 /* ------------------------------------------------------------------ *
  * the extension
  * ------------------------------------------------------------------ */
@@ -791,7 +814,7 @@ export default function squint(pi: ExtensionAPI) {
 					current.args = args;
 					invalidateRow(id);
 				}
-				return clickable(new SquintRow((cols) => renderRow(info, id, cols, theme).head), id, context.invalidate);
+				return clickable(padded(new SquintRow((cols) => renderRow(info, id, cols, theme).head), padOf(context)), id, context.invalidate);
 			},
 
 			renderResult(result, options, theme, context) {
@@ -812,15 +835,16 @@ export default function squint(pi: ExtensionAPI) {
 					invalidateRow(id);
 				}
 				const body = new SquintRow((cols) => renderRow(info, id, cols, theme).body);
+				const pad = padOf(context);
 				imagesSupported = (context as unknown as { squintImagesSupported?: boolean }).squintImagesSupported === true;
-				if (!imagesSupported) return clickable(body, id, context.invalidate);
+				if (!imagesSupported) return clickable(padded(body, pad), id, context.invalidate);
 				const cache = context.state.squintImageCache;
 				const stamp = themeStamp(theme);
 				if (!cache || cache.content !== result.content || cache.args !== context.args || cache.stamp !== stamp || cache.show !== context.showImages) {
 					context.state.squintImageCache = { content: result.content, args: context.args, stamp, show: context.showImages,
 						component: new ImageResult(body, attachments(result.content, context.args), theme, () => imageMode, () => isOpen(id), context.showImages, () => keyHint(id)("to")) };
 				}
-				return Object.assign(clickable(context.state.squintImageCache.component, id, context.invalidate), { squintImages: true });
+				return Object.assign(clickable(padded(context.state.squintImageCache.component, pad), id, context.invalidate), { squintImages: true });
 			},
 		};
 	});

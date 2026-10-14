@@ -88,6 +88,21 @@ try {
 		const body = durationRenderer.renderResult({ content: [], details: undefined }, { isPartial: false }, theme, durationContext);
 		assert.ok([...call.render(120), ...body.render(120)].join("\n").includes("1.2s"), "a row restored from a saved session keeps its duration");
 	}
+
+	// pi asks a renderShell:"self" renderer to apply outputPad itself.
+	{
+		const padRenderer = resolveRenderer("bash", () => undefined);
+		const padContext = { ...context, toolCallId: "padded", state: {}, outputPad: 1 };
+		const call = padRenderer.renderCall({ command: "ls" }, theme, padContext);
+		const body = padRenderer.renderResult({ content: [], details: undefined }, { isPartial: false }, theme, padContext);
+		for (const line of [...call.render(80), ...body.render(80)]) {
+			assert.ok(line.startsWith(" "), `every line carries the outputPad margin: ${JSON.stringify(line)}`);
+			assert.ok(line.length <= 80, `padding does not overflow the width: ${JSON.stringify(line)}`);
+		}
+		const unpadded = padRenderer.renderCall({ command: "ls" }, theme, { ...padContext, outputPad: 0 }).render(80);
+		assert.ok(unpadded.every((line) => !line.startsWith(" ")), "outputPad 0 leaves no margin");
+	}
+
 	console.log("squint adapter: ok — reload/resume restores branches and durations, live output stays minimized");
 } finally {
 	if (originalDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
