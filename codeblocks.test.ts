@@ -6,7 +6,9 @@
  * file it actually patches.
  */
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CODE_STYLES, DEFAULT_CODE_STYLE, cellWidth, isCodeStyle, renderCodeBlock, unwrapFence, unwrapQuotedMarkdown, type CodeArea, type CodeStyle } from "./codeblocks.ts";
 import { applyShim, SHIM, shimSource, shimTargets, STOCK } from "./shim.ts";
 
@@ -228,10 +230,24 @@ assert.deepEqual(again, { text: installed.text, action: "present" }, "installing
 assert.equal(applyShim("const untouched = 1;", "minified").action, "pattern-missing", "an unknown renderer is reported, never half-patched");
 assert.ok(SHIM.minified.includes("catch{}") && SHIM.pretty.includes("catch {"), "a style that throws falls back to pi's fences");
 
+// A stale backup must never overwrite the file: if the file itself changed under it, the file wins.
+{
+	const dir = mkdtempSync(join(tmpdir(), "squint-shim-"));
+	const path = join(dir, "markdown.js");
+	const pristine = wrap(stockPretty);
+	writeFileSync(`${path}.orig`, pristine);
+	writeFileSync(path, applyShim(pristine, "pretty").text);
+	assert.equal(shimSource(path, "pretty"), pristine, "the backup stands in while the file is the backup plus the shim");
+	const newer = `${pristine}\n// pi changed this file in place\n`;
+	writeFileSync(path, newer);
+	assert.equal(shimSource(path, "pretty"), newer, "a file that changed under the backup wins over the stored copy");
+	rmSync(dir, { recursive: true, force: true });
+}
+
 // The real install: every target either already carries this shim or is one we can patch.
 for (const target of shimTargets()) {
 	const current = readFileSync(target.path, "utf8");
-	const patch = applyShim(current.includes("__squintCodeBlock") ? current : shimSource(target.path), target.kind);
+	const patch = applyShim(current.includes("__squintCodeBlock") ? current : shimSource(target.path, target.kind), target.kind);
 	assert.ok(patch.action === "present" || patch.action === "installed", `${target.path}: ${patch.action}`);
 }
 if (!shimTargets().length) console.log("shim: no pi release found here, skipped the live check");

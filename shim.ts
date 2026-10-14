@@ -114,12 +114,17 @@ export function shimTargets(): ShimTarget[] {
 }
 
 /**
- * The pristine source for a target: the backup a previous patch left, when there is one, so a
- * new shim version replaces the old patch instead of stacking on it.
+ * The source to patch. The pristine backup is the base only while the file on disk is squint's
+ * own older patch — it carries a shim but no longer the stock anchor — so a new shim version
+ * replaces the old one instead of stacking on it. In every other state (a pristine file, or a
+ * newer pi that changed the renderer) the file wins: pi's own update is never overwritten by a
+ * stored copy of an older one.
  */
-export function shimSource(path: string): string {
+export function shimSource(path: string, kind: ShimKind): string {
 	const backup = `${path}.orig`;
-	return existsSync(backup) ? readFileSync(backup, "utf8") : readFileSync(path, "utf8");
+	if (!existsSync(backup)) return readFileSync(path, "utf8");
+	const current = readFileSync(path, "utf8");
+	return current.includes("__squintCodeBlock") && !current.includes(STOCK[kind]) ? readFileSync(backup, "utf8") : current;
 }
 
 export interface ShimResult {
@@ -141,9 +146,12 @@ export function ensureShim(): ShimResult[] {
 			results.push({ path: target.path, kind: target.kind, action: "present" });
 			continue;
 		}
-		const patched = applyShim(shimSource(target.path), target.kind);
+		const source = shimSource(target.path, target.kind);
+		const patched = applyShim(source, target.kind);
 		if (patched.action === "installed") {
-			if (!existsSync(`${target.path}.orig`)) copyFileSync(target.path, `${target.path}.orig`);
+			// A source that is the file itself has changed since the backup, so it becomes the pristine
+			// copy; when the backup stood in, it is already pristine and stays untouched.
+			if (source === current) copyFileSync(target.path, `${target.path}.orig`);
 			writeFileSync(target.path, patched.text);
 		}
 		results.push({ path: target.path, kind: target.kind, action: patched.action });
