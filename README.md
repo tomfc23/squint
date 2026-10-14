@@ -232,7 +232,7 @@ simulation, and reports the optimization it made.
 
 ## Architecture
 
-Three files, and the split is the point:
+The core files, and the split is the point:
 
 | File | Holds | Imports |
 |---|---|---|
@@ -240,9 +240,7 @@ Three files, and the split is the point:
 | `directions.ts` | `buildRow` (raw tool call → `Row`), `layout` (`Row` → styled segments), cell arithmetic | `logic.ts` |
 | `codeblocks.ts` | the code-block styles: `(style, code, lang, width, theme)` → styled lines | none at runtime |
 | `shim.ts` | installing/verifying the patch in pi's renderer | none at runtime |
-| `index.ts` | the pi adapter: settings, events, `/squint`, the code-block hook, one component, the per-row cache | all of it + pi |
-| `directions.ts` | `buildRow` (raw tool call → `Row`), `layout` (`Row` → styled segments), cell arithmetic | `logic.ts` |
-| `index.ts` | the pi adapter: settings, events, `/squint`, one component, the per-row cache | both + pi |
+| `index.ts` | the pi adapter: settings, events, `/squint`, the code-block hook, the row components, the per-row cache | all of it + pi |
 
 `index.ts` is the only file that knows pi exists, so everything that decides *what is displayed* is
 testable with plain node.
@@ -250,8 +248,9 @@ testable with plain node.
 Four invariants hold it together:
 
 - **One segment is one physical line.** Tool arguments and output are untrusted: a shell command can
-  be a multi-line heredoc. Newlines, tabs and carriage returns are flattened at the `layout`
-  boundary, once, because a raw newline inside a line makes the terminal paint over the row below it.
+  be a multi-line heredoc. Newlines, tabs, carriage returns and every other control character are
+  flattened at the `layout` boundary, once, because a raw newline inside a line makes the terminal
+  paint over the row below it, and an escape sequence can clear or retitle the terminal.
 - **`buildRow` is pure.** Everything a row depends on goes in and nothing else — which is also what
   makes the honest-hint behaviour testable from raw tool text.
 - **A row is laid out once per change, not once per frame.** The result is cached and keyed by width,
