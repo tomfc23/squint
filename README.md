@@ -263,10 +263,10 @@ Four invariants hold it together:
 ## Tests
 
 ```bash
-npm test                    # node logic.test.ts && node directions.test.ts && node codeblocks.test.ts
+npm test                    # every check: the pure modules, then the adapter against the installed pi runtime
 ```
 
-All three are assert-based self-checks with no framework and no install step; they need Node 22.6+ for
+All of them are assert-based self-checks with no framework and no install step; they need Node 22.6+ for
 TypeScript type stripping. `codeblocks.test.ts` checks each style against a stub theme (every style draws
 one line per code line, no style ever draws a fence, the padded ones are exactly the width they claim),
 and checks the shim against the renderer it really patches: the patched branch has to stay brace-balanced,
@@ -274,7 +274,10 @@ installing twice has to change nothing, and an unrecognised renderer has to be r
 half-patched. `directions.test.ts` runs the layouts *and* the whole path a session
 takes — raw tool arguments and output through `buildRow` into lines — checking that every line fits
 every width tested, that no control character reaches the frame, that the columns line up between
-rows, and that the collapsed/open states each stay truthful about what they are hiding.
+rows, and that the collapsed/open states each stay truthful about what they are hiding. `index.test.ts`,
+`agents.test.ts` and `images.test.ts` drive the adapter against the installed pi runtime: the reload and
+resume path and the per-row cache, the subagent transcript viewer, and image ownership inside pi's own
+tool component.
 
 ## Design record
 
