@@ -27,8 +27,12 @@ Both benches are superseded by the shipped extension in the repository this dire
 they are kept as the design record, and the code block page still regenerates itself from
 whatever pi theme is installed.
 
-- `tool-calls/.impeccable/` — the design state for the tool call bench: its surface brief and the
-  review captures. It sits beside the page it describes, so run impeccable from
-  `lab/tool-calls/` and the recorded palette resolves.
-- `../` — the extension itself: the directions, the code block styles, the shim that puts them
-  in pi's renderer, the menu, and their tests.
+The extension itself lives in the repository root. Local design-tool state and review captures
+are not part of the published repository.
+
+## Font licenses
+
+The bundled fonts are distributed under the SIL Open Font License 1.1:
+
+- [JetBrains Mono](fonts/jetbrains-mono-OFL.txt)
+- [Schibsted Grotesk](fonts/schibsted-grotesk-OFL.txt)

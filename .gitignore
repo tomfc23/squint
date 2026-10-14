@@ -1,3 +1,13 @@
 node_modules/
 .DS_Store
 *.log
+
+.impeccable/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.tgz

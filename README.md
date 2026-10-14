@@ -1,289 +1,277 @@
 # squint
 
-Compact transcript rendering for [pi](https://pi.dev): five interchangeable directions for tool
-calls, and styles for fenced code blocks.
+A quieter, more readable transcript for [pi](https://pi.dev).
 
-Every tool call becomes one row — a header plus a short preview, with the full output on click or the
-configured shortcut (`⌘E` by default). The *direction* decides how that row is drawn. Five ship, plus
-`off` to hand tool calls back to pi and `custom` to describe your own; switch any time with `/squint`,
-and the choice is remembered.
+squint turns tool calls into compact, expandable rows, gives code blocks a consistent visual style,
+and adds image layouts and a read-only subagent viewer. Choose the presentation that suits your
+workflow; your preferences are saved between sessions.
 
-```
-● READ    extensions/squint/directions.ts                          42 lines · 0.3s     ← rail (default)
+```text
+● READ    directions.ts                                      42 lines · 0.3s
 │ 190#XXMT:export function previewLines(list: string[], limit: number): Preview {
 │ ⌘E to expand
 ```
 
-## The five directions
+- **Five tool-call layouts**, from a single-line ledger to a nested trace spine.
+- **Six code-block styles**, using pi's syntax highlighting and theme.
+- **Four image modes**, including contact strips and an attachment inspector.
+- **Live subagent observation**, without interrupting the main session.
 
-| | Direction | The idea | Best at | Cost |
-|---|---|---|---|---|
-| `rail` | **Rail** *(default)* | a trace spine; nested work hangs off its parent | agent-heavy sessions, causality | a column on every row |
-| `ledger` | **Ledger** | one aligned line per call; output only on open | long sessions, finding the call that mattered | you can't judge a read without clicking |
-| `badge` | **Badge** | the filled chip, as shipped before | mixed sessions where you read the output | the chip is loud at forty calls |
-| `gutter` | **Gutter** | a typographic column of labels instead of a chip | scanning by tool and by path | state has to be said in words |
-| `deck` | **Deck** | each call boxed; nesting visible inside | understanding one call at a time | sixty calls is a very tall stack |
+## Installation
 
-Samples, same call in each:
+### Requirements
 
-```
-▫ READ      extensions/squint/directions.ts                       42 lines    0.3s ▸   ← ledger
+- [pi](https://pi.dev) installed and available as `pi`.
+- **Node.js 22.18 or newer** for the repository's direct TypeScript test commands.
+- Git, when installing from this repository.
 
- READ  extensions/squint/directions.ts                                                 ← badge
-       39#BRBH:const COLLAPSED: Record<Kind, number> = {
-       +34 more · click to expand
+Tested with **pi 1.2.0**. Code-block and image enhancements patch pi's installed renderer and
+currently locate it through `<agent-dir>/install/current-version` and `install/releases/`.
+Other installation layouts may not receive these enhancements. Compatibility with older or future
+pi versions is not guaranteed; unsupported renderer patterns are left unchanged.
 
-READ     extensions/squint/directions.ts                           42 lines            ← gutter
-         │ 190#XXMT:export function previewLines(
-
-╭─● READ       extensions/squint/directions.ts ──────────────── 42 lines · 0.3s ─╮     ← deck
-│ 39#BRBH:const COLLAPSED: Record<Kind, number> = {                              │
-│ ⌘E to expand                                                                   │
-╰────────────────────────────────────────────────────────────────────────────────╯
-```
-
-Nested calls — a `codemode` script or `subagent` running other tools — have no transcript row of
-their own in pi. squint collects them from `tool_execution_*` events and draws them inside the row
-that made them, which is what rail's spine is for:
-
-```
-● AGENT   review-team · correctness                                 3 tools · 12.4s
-│ done
-│ ├─● GREP    /previewLines/ · extensions
-│ │ index.ts:171:  const { shown, hidden } = previewLines(toLines(body), errorLimit);
-│ ├─● READ    logic.ts
-│ │ 190#XXMT:export function previewLines(list: string[], limit: number): Preview {
-│ └─● WEB     pi tui box drawing
-│   1  Box Drawing — Wikipedia
-│ click to expand
-```
-
-## Install
-
-As a pi package, from this repo:
+### Install as a pi package
 
 ```bash
 pi install git:github.com/tomfc23/squint
 ```
 
-Or drop the directory into pi's extensions folder, where it is discovered automatically:
+Alternatively, clone the repository into pi's automatically discovered extensions directory:
 
 ```bash
 git clone https://github.com/tomfc23/squint ~/.pi/agent/extensions/squint
 ```
 
-Either way, `/reload` in a running session picks it up.
+**Use one installation method, not both.** For a custom agent directory, replace `~/.pi/agent`
+with the directory configured by `PI_CODING_AGENT_DIR`.
 
-## Use
+Run `/reload` in an existing session, or start pi to load the extension. **Then restart pi once**
+so the code-block and image renderer patches take effect. Tool-call layouts work immediately;
+the already-running process cannot load changes to its renderer modules.
 
+### Update or remove
+
+For a package installation:
+
+```bash
+pi update --extensions
+pi remove git:github.com/tomfc23/squint
 ```
-/squint              one menu: choose tool calls or code blocks, then the mode
-/squint tui          go straight to the tool call picker (rail, ledger, badge, gutter, deck, off, custom)
-/squint ledger       set a tool call direction directly
-/squint code         go straight to the code block picker (spine, card, panel, listing, rule, chip, off)
-/squint card         set a code block style directly
-/squint off          hand tool calls back to pi ("/squint code off" does it for code blocks)
-/squint custom       describe a direction; pi builds it with a loopback-only local preview first
-/squint key ctrl+o   set the expand/collapse shortcut (saved, then reloaded)
-/squint agents       observe subagent transcripts; cycle back to Main to return
-```
 
-`/squint` asks which rendering family to configure:
+For a manual clone, update it with `git pull --ff-only` from the clone directory. To uninstall,
+move that directory outside pi's extensions directory. Restart pi after removal.
 
-```
+Settings in `<agent-dir>/squint.json` and renderer backups are retained. The installed hooks fall
+back to pi's rendering when squint is not loaded; removal does not restore the renderer files.
+
+## Quick start
+
+Run `/squint` to open the menu:
+
+```text
   ❯ Tool calls — rail
     Code blocks — spine
     Image rendering — inline
     Observe agents — read-only subagent transcripts
 ```
 
-Each entry states what that family draws now. Pick one and its own picker opens, current choice marked.
-A bare name still works (`/squint card`), and `off` keeps meaning tool calls, as it always has.
+Each entry shows its current mode. Choose a family, then a mode; the menu closes so you can see
+the result. You can also change modes directly:
 
-The picker lists every mode with the current one marked and closes after one choice, so the transcript
-is visible behind it. The choice is saved to `<agent-dir>/squint.json` — `~/.pi/agent/` by default, or
-`$PI_CODING_AGENT_DIR` when set, alongside the shortcut:
+| Command | Action |
+| --- | --- |
+| `/squint tui` | Open the tool-call layout picker |
+| `/squint ledger` | Switch to the ledger layout |
+| `/squint code` | Open the code-block style picker |
+| `/squint code card` | Switch to the card style |
+| `/squint images` | Open the image-mode picker |
+| `/squint images inspector` | Switch to the image inspector |
+| `/squint agents` | Browse subagent transcripts |
+| `/squint key ctrl+o` | Change the expand/collapse shortcut |
+| `/squint custom` | Ask pi to build a custom tool-call layout |
+| `/squint off` | Use pi's own tool-call rendering |
+| `/squint code off` | Use pi's own fenced code blocks |
+
+Bare code-style names also work, such as `/squint card`. A bare `off` applies only to tool calls.
+
+### Controls and settings
+
+Click a tool row to expand or collapse it. **⌘E** (`super+e`) toggles the newest row by default;
+use `/squint key <binding>` to choose another shortcut, such as `ctrl+o` or `ctrl+shift+x`.
+Thinking blocks start collapsed and are labeled `THINK · click to expand`.
+
+squint releases pi's built-in `app.tools.expand` binding for its own shortcut. If you have assigned
+that action another binding, add `"app.tools.expand": []` to your `keybindings.json` to avoid a conflict.
+
+Preferences are saved to `<agent-dir>/squint.json`, where `<agent-dir>` is `~/.pi/agent` unless
+`PI_CODING_AGENT_DIR` is set. The defaults are:
 
 ```json
 { "direction": "rail", "key": "super+e", "codeBlock": "spine", "images": "inline" }
 ```
 
-With no settings file, the direction is `rail`, the shortcut is `⌘E`, code blocks are `spine`, and images are `inline`. Older settings files also default images to `inline`.
+## Tool-call layouts
 
-Keys and gestures:
+| Layout | Presentation | Best for |
+| --- | --- | --- |
+| `rail` (default) | A trace spine, with nested calls attached to their parent | Following agents and nested work |
+| `ledger` | One aligned line per call; output appears when expanded | Scanning long sessions |
+| `badge` | A filled tool label with a short output preview | Reading mixed tool output |
+| `gutter` | A fixed label column with indented output | Scanning by tool and path |
+| `deck` | A bordered panel for each call | Inspecting individual calls |
 
-- **click any row** to expand or collapse it
-- **`⌘E`** expands the newest row; rebind it with `/squint key <binding>` (e.g. `ctrl+o`,
-  `ctrl+shift+x`). The built-in `app.tools.expand` binding is released for this — add
-  `"app.tools.expand": []` to `keybindings.json` if you have it bound elsewhere
-- thinking blocks are relabelled `THINK · click to expand` and start collapsed
+Nested tool events from `codemode` and `subagent` appear inside the parent row rather than as
+separate top-level entries:
 
-Behaviour worth knowing:
+```text
+● AGENT   review-team · correctness                         3 tools · 12.4s
+│ done
+│ ├─● GREP    /previewLines/ · extensions
+│ ├─● READ    logic.ts
+│ └─● WEB     pi tui box drawing
+│ click to expand
+```
 
-- a collapsed row states what it is hiding (`+34 more`, `… 206 earlier lines`), and a row with
-  nothing behind it offers no affordance at all
-- a collapsed **edit** shows the changed lines; opening brings in the context lines
-- a collapsed **shell** row shows the *tail* of the output, because that is where the answer
-  usually is; opening shows it from the top
-- output past 400 lines keeps a count of what is still withheld, even when open
+Collapsed rows state what they hide and show no expand hint when there is nothing to open.
+Edits preview changed lines; expanding reveals context. Shell previews show the tail of the output,
+while expanded output starts at the top. Output beyond 400 lines retains a count of withheld lines,
+even when expanded.
+
+## Code-block styles
+
+Choose a style with `/squint code <style>`. All styles retain pi's theme and syntax highlighting.
+
+| Style | Presentation |
+| --- | --- |
+| `spine` (default) | A muted language label and a left rule |
+| `card` | A bordered card with the language in its top edge |
+| `panel` | A full-width background without a border |
+| `listing` | Line numbers and a stated line count |
+| `rule` | A thin header rule with the language label |
+| `chip` | A filled language badge above the code |
+| `off` | pi's original fenced rendering |
+
+Card, panel, and listing styles wrap long lines to fit the terminal width. A code block containing
+exactly one fenced block is unwrapped once, using the inner language for highlighting.
+
+For user messages only, pasted Markdown documents wrapped in four or more backticks are unwrapped
+before parsing when they contain an inner fence. Assistant Markdown is not transformed this way.
 
 ## Images
 
-`/squint images` opens **Image rendering**; `/squint images <mode>` sets it directly.
+Choose a mode with `/squint images <mode>`.
 
-| Mode | Rendering |
-|---|---|
-| `inline` (default) | Aspect-preserving previews, capped at 18 terminal rows; later siblings use 6-row thumbnails. |
-| `strip` | Sibling images in a compact contact strip; expand for larger previews. Narrow terminals stack thumbnails. |
-| `compact` | Named attachments; click or use the configured expand key to reveal previews. |
-| `inspector` | Named attachments; click or use the expand key to open one shared read-only image browser. Left/right selects another attachment; Escape closes it. Wide terminals show a result list beside the image. |
+| Mode | Presentation |
+| --- | --- |
+| `inline` (default) | Aspect-preserving previews up to 18 rows; later siblings use 6-row thumbnails |
+| `strip` | A contact strip of sibling images; narrow terminals stack thumbnails |
+| `compact` | Named attachments that expand into previews |
+| `inspector` | Named attachments opening a shared, read-only image browser |
 
-Pi's **show images** setting is respected. Unsupported terminals show attachment metadata; malformed images show a one-line fallback instead of reserving empty space. Tool calls set to `off` retain pi's own image rendering.
+The inspector uses Left/Right to select attachments and Escape to close. Wide terminals show a
+result list beside the selected image. Click or use the configured expand shortcut to open it.
 
-Core normally appends images outside extension renderers. `image-shim.ts` adds an opt-in ownership flag, so squint renders images once without changing the tool result or model-visible content. The shim covers the CLI bundle and SDK component, backs up each target as `.squint-images.orig`, and is re-applied after updates. **Restart pi once after installation**; until then, or on an incompatible build, core keeps ownership. Non-PNG images use pi's existing transcoder.
+pi's **show images** setting is respected. Terminals without image support show attachment metadata;
+malformed images show a one-line fallback. Non-PNG images use pi's transcoder. With tool-call
+rendering set to `off`, pi retains its own image rendering.
 
 ## Observing subagents
 
-**Ctrl+Shift+Right/Left** cycles only between Main and **running** subagents.
-Completed, failed, and aborted agents are skipped in both directions.
-`/squint agents` (or **Observe agents** in the menu) explicitly opens transcript history;
-**Tab / Shift+Tab** browses that history. In a viewer opened by the arrow shortcut, Tab also
-cycles only running agents. **Escape** returns to Main. Main keeps working while you observe.
+**Ctrl+Shift+Right/Left** cycles between Main and running subagents. Completed, failed, and aborted
+agents are skipped. Use `/squint agents` to browse transcript history, including finished agents.
+Main keeps working while you observe; input is never sent to the observed agent.
 
-A pinned header identifies the agent, unique task number, running/completed/failed/aborted
-status, model, and **READ ONLY** mode. Main's footer shows
-`Observing: Main · 2 running · Ctrl+Shift+←/→` only while subagents are running.
-It follows the observed agent and automatically hides when the last subagent finishes, fails,
-or is aborted. Finished transcripts remain available through `/squint agents`.
-Repeated uses of the same agent remain separate views, including parallel tasks and chain steps.
+| Control | Action |
+| --- | --- |
+| Tab / Shift+Tab | Cycle agents; history in the menu viewer, running agents in the shortcut viewer |
+| Escape | Return to Main |
+| ↑/↓, PageUp/PageDown, mouse wheel | Scroll the transcript |
+| Home / End | Go to the task / follow new output |
+| Click a tool row | Expand or collapse that row |
+| Configured expand shortcut | Toggle the latest tool row |
+| `t` | Toggle thinking |
 
-The viewer uses pi's assistant rendering and squint's tool direction. **↑/↓**, **PageUp/PageDown**,
-and the mouse wheel scroll; **Home** goes to the task; **End** follows new output. Click a tool
-row or use the configured expand shortcut (**⌘E** by default) for the latest tool. **t** toggles
-thinking. Input is never sent to a subagent.
+A pinned header identifies the task, agent, status, and model, and marks the view **READ ONLY**.
+The footer tracks the observed agent while subagents are running and hides when none remain.
+Repeated invocations of the same agent remain separate views.
 
-Updates arrive as the runner publishes messages and tool results, not token-by-token.
-Finished top-level subagent transcripts restore from saved tool details after reload/resume.
-Nested invocations (such as delegation through codemode) are observable live; pi saves nested
-metadata without result bodies, so those transcripts cannot restore unless their details were persisted.
+Updates arrive as the runner publishes messages and results, not token by token. Finished top-level
+transcripts restore from saved tool details after reload or resume. Nested invocations are observable
+live, but cannot restore unless their transcript details were persisted; nested metadata alone does
+not contain result bodies.
 
+## Renderer patches
 
-## Code blocks
+pi's extension API does not replace fenced-code rendering or core-appended images, so squint installs
+two small hooks in the supported CLI bundle and SDK components:
 
-Tool calls are not the only thing in a transcript that has to be drawn. pi's Markdown renderer wraps
-every fenced block in the ``` fences it parsed, so code arrives wearing its own markup, and no
-extension API can change that: `registerMarkdownTransformer` rewrites markdown *text*, and every
-fence is parsed straight back into a code token. squint therefore patches the renderer once and
-keeps the patch direction-agnostic — pi asks a global, squint answers:
+- `shim.ts` delegates code-block rendering to squint and keeps a `.orig` backup beside each target.
+- `image-shim.ts` lets squint own image rendering without duplicate core images and keeps a
+  `.squint-images.orig` backup beside each target.
 
-```
-  spine    a muted language label, one left rule per line              (default)
-  card     a closed card with the label in its top rail
-  panel    a full-width ground, no glyphs spent on chrome
-  listing  a line-number gutter and a stated line count
-  rule     one hairline header carrying the language
-  chip     a filled language badge on the first line
-  off      pi's own fences, exactly as they ship
-```
+These patches change presentation, not tool results or model-visible content. The code-block hook
+falls back to pi's renderer when squint is absent, disabled, or fails. The image hook is opt-in;
+until it is loaded, core retains image ownership.
 
-Syntax highlighting is untouched: the code comes from the markdown theme's own `highlightCode`, so a
-theme change moves the blocks with it. `/squint code` writes the choice to `squint.json` and reloads.
+A pi update may replace the patched files. squint checks them on load and reapplies recognized
+patches; restart pi when prompted. Setting a mode to `off` does not remove the on-disk hooks.
 
-Two things the styles do beyond drawing, both because pasting is how code arrives:
+## Development
 
-- **A block that is itself one fenced block is unwrapped once**, so a snippet copied out of a chat
-  message does not render as a code block whose first and last lines are backticks. The inner
-  language becomes the label and the one that gets highlighted.
-- **A pasted *document* that was fenced is unwrapped before pi parses it** (`registerMarkdownTransformer`,
-  user messages only, and only for a fence of 4+ backticks that really does contain a fence). That is
-  what makes a pasted sheet render as its own headings and code blocks instead of as one giant card
-  full of fence markers. Assistant markdown is never touched: quoting a fence has to stay possible.
-- the boundary-claiming styles (**card**, **panel**, and **listing**'s gutter) wrap long lines
-  themselves with pi-tui's `wrapTextWithAnsi`, so a line that does not fit grows the block instead of
-  tearing a hole in the right rail
-
-Two things are worth knowing about the patch:
-
-- it lives inside the pi release (`dist/bundle/chunks/*.js` for the transcript, `@earendil-works/pi-tui`
-  for extensions that render Markdown themselves), so **a pi update ships the stock renderer again** —
-  squint re-installs it on every session start and says so, and the next restart shows the styles
-- the **first** install cannot affect the process that installed it, because the module is already
-  loaded: `/squint code` says to restart instead of pretending the switch worked. Afterwards it is a
-  live toggle like the directions, since the style is read per block
-
-The styles were chosen in a bench of seven rendered candidates: `../code-block-lab/` under the
-projects directory, which regenerates every frame from pi's own theme and `highlightCode`.
-
-## Adding a direction
-
-A direction is a pure layout plus one line of registration. `/squint custom` walks pi through this for
-you — it collects your instructions, shows a loopback-only locally served HTML simulation (modeled on the
-squint-tui preview page) to confirm, implements the direction, runs the tests, deletes the
-simulation, and reports the optimization it made.
-
-1. Add the id to `Direction` and `DIRECTIONS` in `directions.ts`. The first entry is the default.
-2. Write its renderer in that file: `(row: Row, cols: number, open: boolean, opts) => Seg[][]`.
-   The **first line is the head**; everything after it is the body. `index.ts` slices on that, which
-   is how one layout feeds both the call and the result component.
-3. Add it to the `switch` in `layout()`, and add a `collapsedLimit` case if it wants its own
-   collapsed slice (`ledger` returns `0`: showing nothing is that direction's whole idea).
-4. `node directions.test.ts` — the shared checks run every direction at every width in both states,
-   so a new one is covered as soon as it is in `DIRECTIONS`.
-
-## Architecture
-
-The core files, and the split is the point:
-
-| File | Holds | Imports |
-|---|---|---|
-| `logic.ts` | classification, argument summaries, preview slicing | none |
-| `directions.ts` | `buildRow` (raw tool call → `Row`), `layout` (`Row` → styled segments), cell arithmetic | `logic.ts` |
-| `codeblocks.ts` | the code-block styles: `(style, code, lang, width, theme)` → styled lines | none at runtime |
-| `shim.ts` | installing/verifying the patch in pi's renderer | none at runtime |
-| `index.ts` | the pi adapter: settings, events, `/squint`, the code-block hook, the row components, the per-row cache | all of it + pi |
-
-`index.ts` is the only file that knows pi exists, so everything that decides *what is displayed* is
-testable with plain node.
-
-Four invariants hold it together:
-
-- **One segment is one physical line.** Tool arguments and output are untrusted: a shell command can
-  be a multi-line heredoc. Newlines, tabs, carriage returns and every other control character are
-  flattened at the `layout` boundary, once, because a raw newline inside a line makes the terminal
-  paint over the row below it, and an escape sequence can clear or retitle the terminal.
-- **`buildRow` is pure.** Everything a row depends on goes in and nothing else — which is also what
-  makes the honest-hint behaviour testable from raw tool text.
-- **A row is laid out once per change, not once per frame.** The result is cached and keyed by width,
-  direction, open state, whether the row owns the expand key, and the theme — so typing and scrolling
-  reuse the previous strings untouched. Typing used to cost a full rebuild of every visible row.
-- **Depth is a slice, not a mode.** A collapsed row and an open one differ only in what
-  `buildRow` put in `preview` vs `hidden`; the renderers never branch on which one is showing.
-
-## Tests
+Clone the repository and use Node.js **22.18+**. No test framework or additional dependency install is
+needed when the supported pi runtime is already installed in the layout described above.
 
 ```bash
-npm test                    # every check: the pure modules, then the adapter against the installed pi runtime
+npm test               # All seven self-check suites
+npm run test:adapter   # Adapter, subagent viewer, and image integration checks
+node directions.test.ts # Layout checks only; no installed pi runtime required
 ```
 
-All of them are assert-based self-checks with no framework and no install step; they need Node 22.6+ for
-TypeScript type stripping. `codeblocks.test.ts` checks each style against a stub theme (every style draws
-one line per code line, no style ever draws a fence, the padded ones are exactly the width they claim),
-and checks the shim against the renderer it really patches: the patched branch has to stay brace-balanced,
-installing twice has to change nothing, and an unrecognised renderer has to be reported rather than
-half-patched. `directions.test.ts` runs the layouts *and* the whole path a session
-takes — raw tool arguments and output through `buildRow` into lines — checking that every line fits
-every width tested, that no control character reaches the frame, that the columns line up between
-rows, and that the collapsed/open states each stay truthful about what they are hiding. `index.test.ts`,
-`agents.test.ts` and `images.test.ts` drive the adapter against the installed pi runtime: the reload and
-resume path and the per-row cache, the subagent transcript viewer, and image ownership inside pi's own
-tool component.
+The assert-based checks cover layout widths, control-character filtering, honest collapsed previews,
+code styles, patch idempotency, reload/resume behavior, row caching, agent navigation, image protocols,
+and fallback rendering. Adapter tests resolve modules from the installed pi release, not a separate
+copy in this repository.
 
-## Design record
+### Source map
 
-The benches that chose both vocabularies live in [`lab/`](lab/): five directions for one tool
-call, seven frames for one code block, each regenerated from pi's own theme. Not part of the
-package (`files` in `package.json` ships the extension alone).
+| File | Responsibility |
+| --- | --- |
+| `index.ts` | Extension registration, settings, commands, events, row components, and render cache |
+| `logic.ts` | Tool classification, argument summaries, text sanitization, and preview slicing |
+| `directions.ts` | Pure tool-call row construction and layout |
+| `codeblocks.ts` | Code styles and fence handling; uses text helpers from `logic.ts` |
+| `menu.ts` | Menu entries, command resolution, and completions |
+| `agents.ts` | pi-backed, read-only subagent transcript viewer |
+| `image-modes.ts` | Image mode definitions and validation |
+| `images.ts` | pi-backed image previews and inspector |
+| `shim.ts` | Agent-directory resolution and code-block patch installation |
+| `image-shim.ts` | Image ownership patch installation |
+
+Layout logic is separate from pi-backed components. Tool arguments and output are treated as
+untrusted: layout text is flattened and control characters are removed before drawing. Rows are
+cached across unchanged frames rather than rebuilt on every keystroke.
+
+### Adding a layout
+
+`/squint custom` asks pi to collect your instructions, build a loopback-only HTML preview for approval,
+implement the layout, run tests, and remove the temporary preview. Review the generated changes as
+you would any other code.
+
+To add one manually:
+
+1. Add its ID to `Direction` and `DIRECTIONS` in `directions.ts`. The first entry is the default.
+2. Implement `(row: Row, cols: number, open: boolean, opts) => Seg[][]`. The first line is the header;
+   the remaining lines are the body.
+3. Register it in `layout()` and set a `collapsedLimit` where needed.
+4. Run `node directions.test.ts`, then `npm test`. The shared layout checks cover every registered
+   direction at multiple widths, both collapsed and expanded.
+
+The static design comparisons live in [`lab/`](lab/), including the
+[code-block bench](lab/code-blocks/). They are kept as a design record and are excluded from the
+npm package; the package's `files` list includes only the extension, README, and license.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+squint is [MIT licensed](LICENSE). The bundled lab fonts are separately licensed under the
+SIL Open Font License 1.1: [JetBrains Mono](lab/fonts/jetbrains-mono-OFL.txt) and
+[Schibsted Grotesk](lab/fonts/schibsted-grotesk-OFL.txt).
