@@ -23,7 +23,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ExtensionAPI, ExtensionCommandContext, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
 import { type Component, type KeyId, MouseRegion, parseColor, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import {
 	buildRow,
@@ -41,6 +41,9 @@ import { classify, keyLabel, normalizeKeyId, textOf, TONE_HEX, type Classificati
 import { ensureShim } from "./shim.ts";
 import { completions, menuEntries, resolveArg } from "./menu.ts";
 import { registerAgentViews } from "./agents.ts";
+import { DEFAULT_IMAGE_MODE, IMAGE_MODES, isImageMode, type ImageMode } from "./image-modes.ts";
+import { attachments, ImageResult, ImageInspector, type ImageBlock } from "./images.ts";
+import { ensureImageShim } from "./image-shim.ts";
 import {
 	CODE_STYLES,
 	DEFAULT_CODE_STYLE,
@@ -81,6 +84,7 @@ interface Settings {
 	key: string;
 	/** How fenced code blocks render: a style, or "off" for pi's own fences (see codeblocks.ts). */
 	codeBlock: CodeStyle;
+	images: ImageMode;
 	/** The instructions last handed to /squint custom, kept as the editor's prefill. */
 	custom?: { instructions: string };
 }
@@ -94,12 +98,13 @@ function loadSettings(): Settings {
 			direction: isMode(saved.direction) ? saved.direction : DEFAULT_DIRECTION,
 			key: normalizeKeyId(saved.key) ?? DEFAULT_KEY,
 			codeBlock: isCodeStyle(saved.codeBlock) ? saved.codeBlock : DEFAULT_CODE_STYLE,
+			images: isImageMode(saved.images) ? saved.images : DEFAULT_IMAGE_MODE,
 			custom: typeof saved.custom?.instructions === "string" ? { instructions: saved.custom.instructions } : undefined,
 		};
 	} catch {
-		// No settings yet, or unreadable: rail, Cmd+E, spine.
+		// Missing or unreadable settings use the defaults.
 	}
-	return { direction: DEFAULT_DIRECTION, key: DEFAULT_KEY, codeBlock: DEFAULT_CODE_STYLE };
+	return { direction: DEFAULT_DIRECTION, key: DEFAULT_KEY, codeBlock: DEFAULT_CODE_STYLE, images: DEFAULT_IMAGE_MODE };
 }
 
 function saveSettings(settings: Settings): void {
@@ -162,6 +167,7 @@ interface Live {
 	diff?: string;
 	isError: boolean;
 	pending: boolean;
+	showImages?: boolean;
 }
 
 /** A tool call made by another tool. pi never gives it a transcript row of its own. */
@@ -257,6 +263,10 @@ export default function squint(pi: ExtensionAPI) {
 	const settings = loadSettings();
 	let direction: Mode = settings.direction;
 	let codeBlock: CodeStyle = settings.codeBlock;
+	let imageMode = settings.images;
+	let imageContext: ExtensionContext | undefined;
+	let imagesSupported = false;
+	let closeInspector: (() => void) | undefined;
 
 	/**
 	 * How pi's renderer asks squint to draw a fenced code block. The shim (shim.ts) calls this
@@ -308,6 +318,10 @@ export default function squint(pi: ExtensionAPI) {
 
 	const toggle = (id: string | null) => {
 		if (!id) return;
+		if (imageMode === "inspector" && imagesSupported && imageContext && imageAttachments(id).length) {
+			void openInspector(id, imageContext);
+			return;
+		}
 		if (expanded.has(id)) expanded.delete(id);
 		else expanded.add(id);
 		invalidators.get(id)?.();
@@ -456,9 +470,42 @@ export default function squint(pi: ExtensionAPI) {
 		});
 	};
 
+	const imageAttachments = (id: string) => {
+		const current = live.get(id);
+		return attachments((current?.result as { content?: ImageBlock[] })?.content ?? [], current?.args);
+	};
+	const openInspector = async (id: string, ctx: ExtensionContext) => {
+		if (closeInspector || ctx.mode !== "tui") return;
+		const args = new Map<string, unknown>();
+		const entries: Array<{ key: string; item: ReturnType<typeof attachments>[number] }> = [];
+		for (const entry of ctx.sessionManager.getBranch()) {
+			if (entry.type !== "message") continue;
+			const message = entry.message;
+			if (message.role === "assistant") for (const block of message.content) {
+				if (block.type === "toolCall") args.set(block.id, block.arguments);
+			}
+			if (message.role === "toolResult") for (const item of attachments(message.content, args.get(message.toolCallId))) {
+				entries.push({ key: message.toolCallId, item });
+			}
+		}
+		if (!entries.some(entry => entry.key === id)) entries.push(...imageAttachments(id).map(item => ({ key: id, item })));
+		const selected = entries.findIndex(entry => entry.key === id);
+		if (selected < 0) return;
+		try {
+			await ctx.ui.custom<void>((tui, theme, _keys, done) => {
+				closeInspector = done;
+				return new ImageInspector(entries.map(entry => entry.item), selected, tui, theme, done, live.get(id)?.showImages !== false);
+			}, { overlay: true, overlayOptions: { width: "95%", maxHeight: "95%", anchor: "center" } });
+		} catch { ctx.ui.notify("squint: could not open the image inspector", "warning"); }
+		finally { closeInspector = undefined; }
+	};
+	pi.on("session_shutdown", () => closeInspector?.());
+
 	// Thinking blocks are core-rendered, so this extension only relabels the collapsed line;
 	// settings.json sets hideThinkingBlock so they start minimized like a tool row.
 	pi.on("session_start", (_event, ctx) => {
+		closeInspector?.();
+		imageContext = ctx;
 		// Execution events are not replayed on reload/resume. Restore the saved headers,
 		// not result bodies: pi deliberately persists nested metadata without output.
 		children.clear();
@@ -490,12 +537,16 @@ export default function squint(pi: ExtensionAPI) {
 		if (patchedNow() && codeBlock !== "off") {
 			ctx.ui.notify("squint: re-applied the code block shim after the pi update — restart pi to see code blocks", "info");
 		}
+		try {
+			const patches = ensureImageShim();
+			if (patches.some(patch => patch.action === "installed")) ctx.ui.notify("squint: image rendering installed — restart pi once to enable it", "info");
+			else if (!patches.length || patches.some(patch => patch.action === "pattern-missing")) ctx.ui.notify("squint: image shim unavailable for this pi build; keeping pi's image renderer", "warning");
+		} catch { ctx.ui.notify("squint: could not install image rendering; keeping pi's image renderer", "warning"); }
 	});
 
 	pi.on("tool_execution_start", (event) => {
 		if (!event.parentToolCallId) {
 			latestId = event.toolCallId;
-			startedAt.set(event.toolCallId, Date.now());
 			return;
 		}
 		const child: Child = {
@@ -618,13 +669,27 @@ export default function squint(pi: ExtensionAPI) {
 		await setCodeBlock(hit.id, ctx);
 	};
 
-	/** The entry point: squint draws two things, so ask which one first. */
+	const setImages = (next: ImageMode, ctx: ExtensionCommandContext) => {
+		imageMode = settings.images = next;
+		saveSettings(settings);
+		for (const invalidate of invalidators.values()) invalidate();
+		ctx.ui.notify(`squint: images ${next}${imagesSupported ? "" : " — restart pi to enable the image shim"}`, "info");
+	};
+	const pickImages = async (ctx: ExtensionCommandContext) => {
+		if (!ctx.hasUI) { ctx.ui.notify(`squint: images ${imageMode}`, "info"); return; }
+		const options = IMAGE_MODES.map(mode => `${mode.id === imageMode ? "●" : "○"} ${mode.label} — ${mode.blurb}`);
+		const picked = await ctx.ui.select(`squint — image rendering (now: ${imageMode})`, options);
+		const hit = picked && IMAGE_MODES[options.indexOf(picked)];
+		if (hit) setImages(hit.id, ctx);
+	};
+
+	/** Select a rendering family, then its mode. */
 	const openMenu = async (ctx: ExtensionCommandContext): Promise<void> => {
 		if (!ctx.hasUI) {
-			ctx.ui.notify(`squint: tool calls ${direction} · code blocks ${codeBlock}`, "info");
+			ctx.ui.notify(`squint: tool calls ${direction} · code blocks ${codeBlock} · images ${imageMode}`, "info");
 			return;
 		}
-		const entries = menuEntries({ direction, codeBlock });
+		const entries = menuEntries({ direction, codeBlock, images: imageMode });
 		const texts = entries.map((entry) => entry.text);
 		const picked = await ctx.ui.select("squint — what should it draw?", texts);
 		if (!picked) return;
@@ -632,16 +697,23 @@ export default function squint(pi: ExtensionAPI) {
 		if (!entry) return;
 		if (entry.id === "tools") await pickToolCalls(ctx);
 		else if (entry.id === "agents") await observeAgents(ctx);
+		else if (entry.id === "images") await pickImages(ctx);
 		else await pickCodeBlocks(ctx);
 	};
 
 	pi.registerCommand("squint", {
-		description: `squint — "agents" to observe subagents; "tui" for tool calls, "code" for code blocks; or a mode name or "key <binding>"`,
+		description: `squint — "tui" for tool calls, "code" for code blocks, "images" for image rendering, "agents" to observe subagents`,
 		getArgumentCompletions: (prefix: string) => completions(prefix) ?? null,
 		handler: async (args: string, ctx) => {
 			const choice = resolveArg(args);
 
 			switch (choice.kind) {
+				case "image-menu":
+					await pickImages(ctx);
+					return;
+				case "image":
+					setImages(choice.id, ctx);
+					return;
 				case "agents":
 					await observeAgents(ctx);
 					return;
@@ -733,6 +805,7 @@ export default function squint(pi: ExtensionAPI) {
 			renderResult(result, options, theme, context) {
 				const id = context.toolCallId;
 				const current = state(id);
+				current.showImages = context.showImages;
 				const changed = current.result !== result || current.isError !== context.isError || current.pending !== options.isPartial;
 				if (changed) {
 					current.result = result;
@@ -743,7 +816,16 @@ export default function squint(pi: ExtensionAPI) {
 					// New output, so the cached strings for this row are stale.
 					invalidateRow(id);
 				}
-				return clickable(new SquintRow((cols) => renderRow(info, id, cols, theme).body), id, context.invalidate);
+				const body = new SquintRow((cols) => renderRow(info, id, cols, theme).body);
+				imagesSupported = (context as unknown as { squintImagesSupported?: boolean }).squintImagesSupported === true;
+				if (!imagesSupported) return clickable(body, id, context.invalidate);
+				const cache = context.state.squintImageCache;
+				const stamp = themeStamp(theme);
+				if (!cache || cache.content !== result.content || cache.args !== context.args || cache.stamp !== stamp || cache.show !== context.showImages) {
+					context.state.squintImageCache = { content: result.content, args: context.args, stamp, show: context.showImages,
+						component: new ImageResult(body, attachments(result.content, context.args), theme, () => imageMode, () => isOpen(id), context.showImages, () => keyHint(id)("to")) };
+				}
+				return Object.assign(clickable(context.state.squintImageCache.component, id, context.invalidate), { squintImages: true });
 			},
 		};
 	});

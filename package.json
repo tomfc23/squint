@@ -36,6 +36,9 @@
     "logic.ts",
     "codeblocks.ts",
     "shim.ts",
+    "image-modes.ts",
+    "image-shim.ts",
+    "images.ts",
     "menu.ts",
     "README.md"
   ],

@@ -88,11 +88,12 @@ Either way, `/reload` in a running session picks it up.
 /squint agents       observe subagent transcripts; cycle back to Main to return
 ```
 
-squint draws two things, so `/squint` asks which one first:
+`/squint` asks which rendering family to configure:
 
 ```
   ❯ Tool calls — rail
     Code blocks — spine
+    Image rendering — inline
     Observe agents — read-only subagent transcripts
 ```
 
@@ -104,10 +105,10 @@ is visible behind it. The choice is saved to `<agent-dir>/squint.json` — `~/.p
 `$PI_CODING_AGENT_DIR` when set, alongside the shortcut:
 
 ```json
-{ "direction": "rail", "key": "super+e", "codeBlock": "spine" }
+{ "direction": "rail", "key": "super+e", "codeBlock": "spine", "images": "inline" }
 ```
 
-With no settings file, the direction is `rail`, the shortcut is `⌘E`, and code blocks are `spine`.
+With no settings file, the direction is `rail`, the shortcut is `⌘E`, code blocks are `spine`, and images are `inline`. Older settings files also default images to `inline`.
 
 Keys and gestures:
 
@@ -125,6 +126,21 @@ Behaviour worth knowing:
 - a collapsed **shell** row shows the *tail* of the output, because that is where the answer
   usually is; opening shows it from the top
 - output past 400 lines keeps a count of what is still withheld, even when open
+
+## Images
+
+`/squint images` opens **Image rendering**; `/squint images <mode>` sets it directly.
+
+| Mode | Rendering |
+|---|---|
+| `inline` (default) | Aspect-preserving previews, capped at 18 terminal rows; later siblings use 6-row thumbnails. |
+| `strip` | Sibling images in a compact contact strip; expand for larger previews. Narrow terminals stack thumbnails. |
+| `compact` | Named attachments; click or use the configured expand key to reveal previews. |
+| `inspector` | Named attachments; click or use the expand key to open one shared read-only image browser. Left/right selects another attachment; Escape closes it. Wide terminals show a result list beside the image. |
+
+Pi's **show images** setting is respected. Unsupported terminals show attachment metadata; malformed images show a one-line fallback instead of reserving empty space. Tool calls set to `off` retain pi's own image rendering.
+
+Core normally appends images outside extension renderers. `image-shim.ts` adds an opt-in ownership flag, so squint renders images once without changing the tool result or model-visible content. The shim covers the CLI bundle and SDK component, backs up each target as `.squint-images.orig`, and is re-applied after updates. **Restart pi once after installation**; until then, or on an incompatible build, core keeps ownership. Non-PNG images use pi's existing transcoder.
 
 ## Observing subagents
 

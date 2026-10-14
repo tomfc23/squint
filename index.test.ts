@@ -23,13 +23,13 @@ writeFileSync(join(temp, "squint.json"), JSON.stringify({ direction: "rail", key
 try {
 	const { default: squint } = await jiti.import(new URL("./index.ts", import.meta.url).pathname);
 	const handlers = new Map();
-	let resolveRenderer, shortcut;
+	let resolveRenderer, shortcut, command;
 	squint({
 		on: (name, handler) => {
 			const previous = handlers.get(name);
 			handlers.set(name, (...args) => { previous?.(...args); return handler(...args); });
 		},
-		registerMarkdownTransformer() {}, registerCommand() {},
+		registerMarkdownTransformer() {}, registerCommand: (_name, spec) => { command = spec.handler; },
 		registerShortcut: (key, spec) => { if (key === "super+e") shortcut = spec.handler; },
 		registerToolRenderer: (resolver) => { resolveRenderer = resolver; },
 	});
@@ -41,9 +41,9 @@ try {
 			{ id: `${parent}/2`, name: "bash", arguments: { command: "false" }, status: "error", error: "exit 1", durationMs: 2 },
 		] },
 	} }];
-	const ctx = { sessionManager: { getBranch: () => branch }, ui: { setHiddenThinkingLabel() {} } };
-	const theme = { colors: { text: "#fff" }, style: (text) => text };
-	const context = { toolCallId: parent, isError: false, invalidate() {} };
+	const ctx = { sessionManager: { getBranch: () => branch }, ui: { setHiddenThinkingLabel() {}, notify() {} } };
+	const theme = { colors: { text: "#fff" }, style: (text) => text, fg: (_color, text) => text };
+	const context = { toolCallId: parent, isError: false, invalidate() {}, state: {}, showImages: true };
 	const renderer = resolveRenderer("codemode", () => undefined);
 	const head = renderer.renderCall({}, theme, context);
 	const body = renderer.renderResult({ content: [], details: undefined }, { isPartial: false }, theme, context);
@@ -67,6 +67,19 @@ try {
 	assert.equal(outputCount(), 400);
 	await shortcut();
 	assert.deepEqual(draw(), closed, "re-collapse restores the compact branches");
+	await command("images compact", ctx);
+	assert.equal(JSON.parse(readFileSync(join(temp, "squint.json"), "utf8")).images, "compact");
+	const imageContext = { ...context, toolCallId: "image-read", args: { path: "test.png" }, state: {}, squintImagesSupported: true };
+	const imageRenderer = resolveRenderer("read", () => undefined);
+	imageRenderer.renderCall(imageContext.args, theme, imageContext);
+	const imageBody = imageRenderer.renderResult({ content: [{ type: "image", mimeType: "image/png" }] }, { isPartial: false }, theme, imageContext);
+	assert.equal(imageBody.squintImages, true, "core suppression is opt-in");
+	assert.ok(imageBody.render(100).some(line => line.includes("test.png")));
+	assert.deepEqual(imageBody.render(100), imageBody.render(100), "redraws do not append duplicate lines");
+	const legacy = imageRenderer.renderResult({ content: [] }, { isPartial: false }, theme, { ...imageContext, squintImagesSupported: false });
+	assert.equal(legacy.squintImages, undefined, "without a loaded shim, core keeps ownership");
+	await command("images inline", ctx);
+	assert.equal(JSON.parse(readFileSync(join(temp, "squint.json"), "utf8")).images, "inline");
 	console.log("squint adapter: ok — reload/resume restores branches, live output stays minimized");
 } finally {
 	if (originalDir === undefined) delete process.env.PI_CODING_AGENT_DIR;

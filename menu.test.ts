@@ -1,7 +1,7 @@
 /**
  * Runnable self-check for the /squint menu model:  node menu.test.ts
  *
- * The command has two families now — tool calls and code blocks — and one entry point. What
+ * The command has three rendering families and one entry point. What
  * belongs to which family, and what a bare name means, is decided here rather than inside the
  * pi adapter, so the routing can be checked without a session.
  */
@@ -11,7 +11,9 @@ import { completions, menuEntries, resolveArg } from "./menu.ts";
 /* ------------------------------- the menu ------------------------------- */
 
 const entries = menuEntries({ direction: "rail", codeBlock: "spine" });
-assert.deepEqual(entries.map((entry) => entry.id), ["tools", "code", "agents"]);
+assert.deepEqual(entries.map((entry) => entry.id), ["tools", "code", "images", "agents"]);
+assert.equal(entries[2].text, "Image rendering — inline");
+assert.equal(menuEntries({ direction: "rail", codeBlock: "off", images: "strip" })[2].text, "Image rendering — strip");
 assert.deepEqual(entries.slice(0, 2).map((entry) => entry.text), ["Tool calls — rail", "Code blocks — spine"], "each rendering entry states what it draws now");
 assert.deepEqual(
 	menuEntries({ direction: "off", codeBlock: "off" }).slice(0, 2).map((entry) => entry.text),
@@ -43,6 +45,13 @@ assert.deepEqual(resolveArg("calls"), { kind: "tool-menu" });
 assert.deepEqual(resolveArg("code off"), { kind: "code", id: "off" }, "code off hands code blocks back to pi");
 assert.deepEqual(resolveArg("code spine"), { kind: "code", id: "spine" });
 assert.deepEqual(resolveArg("tui rail"), { kind: "tool", id: "rail" });
+assert.deepEqual(resolveArg("images"), { kind: "image-menu" });
+for (const id of ["inline", "strip", "compact", "inspector"]) {
+	assert.deepEqual(resolveArg(`images ${id}`), { kind: "image", id });
+	assert.deepEqual(resolveArg(id), { kind: "image", id });
+}
+assert.deepEqual(resolveArg("images INLINE"), { kind: "image", id: "inline" });
+assert.equal(resolveArg("images invalid").kind, "unknown");
 
 // the rest of the surface, unchanged
 assert.deepEqual(resolveArg("key"), { kind: "key" }, "key without a binding opens the input");
@@ -69,4 +78,4 @@ assert.deepEqual(completions("ca")?.map((entry) => entry.value), ["card"], "a pr
 assert.deepEqual(completions("zzz"), null, "nothing matches, so nothing is offered");
 assert.ok(completions("co")?.some((entry) => entry.value === "code"), "co offers the code family");
 
-console.log("squint menu: ok — two families, one entry point");
+console.log("squint menu: ok — three rendering families, one entry point");
