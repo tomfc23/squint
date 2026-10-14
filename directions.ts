@@ -574,14 +574,16 @@ function nestedBlock(row: Row, cols: number, open: boolean, opts: Required<Layou
  * multi-line heredoc, a subagent's prompt can carry newlines, a code block arrives with
  * tabs. A newline or a bare carriage return inside a segment breaks the frame — the
  * terminal moves the cursor and the row paints over whatever is below it — and a tab
- * jumps to a tab stop, so every column after it is wrong. The rule is enforced once,
- * here, rather than in each direction that happens to render a summary.
+ * jumps to a tab stop, so every column after it is wrong. The same goes for the ESC of an ANSI
+ * sequence (a tool result or a read file can carry one): it must never reach the frame, where it
+ * could clear the screen or retitle the window. The rule is enforced once, here, rather than in
+ * each direction that happens to render a summary.
  * ------------------------------------------------------------------ */
-const CONTROL = /[\r\n\f\v\u0085\u2028\u2029]+/g;
+const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g;
 
 /** Collapse untrusted text to one line: newlines to a space, a tab to its two-space stop. */
 function oneLine(text: string): string {
-	return text.replace(CONTROL, " ").replace(/\t/g, "  ");
+	return text.replace(/\t/g, "  ").replace(CONTROL, " ");
 }
 
 function oneLineRow(row: Row): Row {

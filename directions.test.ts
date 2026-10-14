@@ -44,10 +44,10 @@ const huge: Row = { ...normal, label: "BROWSER_CLI…", tone: "gray", summary: "
 const nasty: Row = {
 	...normal, label: "SHELL", tone: "gold",
 	summary: "python3 - <<'PY'\np='x'\r\ns=open(p).read()\tlog(p)\nPY",
-	preview: ["line one\nline two", "tab\there", "cr\rreturn"],
-	hidden: ["hidden\nline", "also\ttabbed"],
-	hiddenCount: 2,
-	diff: { rows: [{ t: "add", s: "+\tindented\nplus a newline" }, { t: "ctx", s: " ctx\r" }], added: 1, removed: 0 },
+	preview: ["line one\nline two", "tab\there", "cr\rreturn", "esc\u001b[2Jhere", "bell\u0007here"],
+	hidden: ["hidden\nline", "also\ttabbed", "esc\u001b]0;title\u0007"],
+	hiddenCount: 3,
+	diff: { rows: [{ t: "add", s: "+\tindented\nplus a newline" }, { t: "ctx", s: " ctx\r" }, { t: "add", s: "+esc\u001b[31mred" }], added: 2, removed: 0 },
 	nested: [{ ...child, summary: "nested\nsummary", preview: ["kid\tline"] }],
 };
 
@@ -216,7 +216,7 @@ assert.ok(layout("rail", normal, 80, false, { keyHint: (a) => `⌘E ${a}` }).fla
  * frame. It builds the row the way the extension builds it (buildRow, from raw text)
  * instead of handing layout a Row that is already well-formed.
  * ------------------------------------------------------------------ */
-const CONTROL_CHAR = /[\r\n\t\f\v\u0085\u2028\u2029]/;
+const CONTROL_CHAR = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 const checkLines = (label: string, lines: string[], cols: number) => {
 	for (const line of lines) {
 		assert.ok(!CONTROL_CHAR.test(line), `${label}: a control character reached the frame: ${JSON.stringify(line)}`);
