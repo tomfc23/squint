@@ -245,10 +245,11 @@ function formatDuration(ms: number): string {
 	// A sub-millisecond call is not worth "0ms"; say what it is rather than printing a zero.
 	if (ms < 1) return "<1ms";
 	if (ms < 1000) return `${Math.round(ms)}ms`;
-	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-	const minutes = Math.floor(ms / 60_000);
-	const seconds = Math.round((ms % 60_000) / 1000);
-	return `${minutes}m${String(seconds).padStart(2, "0")}s`;
+	// Round once, at the unit being printed: 59.6s must not become "60.0s" or "1m60s".
+	const tenths = Math.round(ms / 100);
+	if (tenths < 600) return `${(tenths / 10).toFixed(1)}s`;
+	const seconds = Math.round(ms / 1000);
+	return `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, "0")}s`;
 }
 
 function diffModel(diff: string): NonNullable<Row["diff"]> {

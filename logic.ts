@@ -97,7 +97,10 @@ export function badgeLabel(toolName: string): string {
 }
 
 export function clip(text: string, max = 200): string {
-	return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+	if (text.length <= max) return text;
+	// Slice by code points: half a surrogate pair prints as a broken glyph.
+	const points = [...text];
+	return points.length <= max ? text : `${points.slice(0, max - 1).join("")}…`;
 }
 
 function shorten(value: unknown, max = 90): string {

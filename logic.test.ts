@@ -60,6 +60,7 @@ assert.deepEqual(tailLines(["a"], 2), { shown: ["a"], hidden: 0 });
 assert.equal(textOf([{ type: "text", text: "hi" }, { type: "image" }]), "hi");
 assert.deepEqual(toLines("\n a \n b \n"), ["a ", " b"]);
 assert.equal(clip("abcdef", 4), "abc…");
+assert.equal(clip("ab\u{1F600}cd", 4), "ab\u{1F600}…", "clipping never splits an emoji");
 
 // key bindings: the canonical id is what pi's shortcut registry sees
 assert.equal(normalizeKeyId("super+e"), "super+e");

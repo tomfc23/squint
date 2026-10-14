@@ -73,6 +73,12 @@ assert.equal(collapsedLimit("badge", "edit"), 10);
 assert.equal(collapsedLimit("badge", "write"), 4);
 assert.equal(collapsedLimit("badge", "unknown-kind" as never), 6, "unknown kinds fall back to six");
 
+/* ---- durations round once, at the unit printed ---------------------- */
+{
+	const time = (ms: number) => buildRow("rail", classify("read"), { args: {}, text: "", isError: false, pending: false, ms, open: false }).time;
+	assert.deepEqual([time(999), time(59_960), time(119_999)], ["999ms", "1m00s", "2m00s"], "a rounded second never prints 60.0s or 1m60s");
+}
+
 /* ---- every line fits every width, in both states ------------------ */
 for (const { id } of DIRECTIONS) {
 	for (const [name, row] of ROWS) {
