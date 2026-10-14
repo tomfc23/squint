@@ -517,13 +517,14 @@ function rail(row: Row, cols: number, open: boolean, opts: Required<LayoutOption
 	return out;
 }
 
-function railChildren(row: Row, cols: number, open: boolean, opts: Required<LayoutOptions>): Seg[][] {
+function railChildren(row: Row, cols: number, open: boolean, opts: Required<LayoutOptions>, prefix = "│ ", depth = 0): Seg[][] {
 	const kids = row.nested ?? [];
+	if (depth >= 2) return [];
 	const out: Seg[][] = [];
 	kids.forEach((kid, i) => {
 		const last = i === kids.length - 1;
 		const head: Seg[] = [
-			seg(`│ ${last ? "└─" : "├─"}`, "dim"),
+			seg(`${prefix}${last ? "└─" : "├─"}`, "dim"),
 			seg(kid.state === "pending" ? "○" : "●", kid.state === "error" ? "error" : kid.tone),
 			seg(" "),
 			seg(padEnd(clipW(kid.label, RAIL_LABEL), RAIL_LABEL), kid.tone, undefined, true),
@@ -531,7 +532,10 @@ function railChildren(row: Row, cols: number, open: boolean, opts: Required<Layo
 			seg(kid.summary || "—", "text"),
 		];
 		out.push(clipSegs(head, cols));
-		for (const line of bodyLines(kid, open, opts, cols - 6)) out.push([seg(last ? "│   " : "│ │ ", "dim"), ...line]);
+		const child = `${prefix}${last ? "  " : "│ "}`;
+		for (const line of bodyLines(kid, open, opts, cols - 6)) out.push([seg(child, "dim"), ...line]);
+		// A call a nested call made (codemode → subagent → tool) hangs one spine further out.
+		out.push(...railChildren(kid, cols - 2, open, opts, child, depth + 1));
 	});
 	return out;
 }

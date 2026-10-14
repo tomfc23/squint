@@ -159,9 +159,27 @@ for (const cols of WIDTHS) {
 	assert.ok(elbow[2].startsWith("│ └─"), "the last nested call closes the elbow");
 }
 
+/* ---- rail draws a call a nested call made --------------------------- */
+{
+	// codemode → subagent → its own tool: pi reports two levels, so rail must draw two levels.
+	const grandchild: Row = { ...child, label: "READ", summary: "inner.ts" };
+	const parent: Row = { ...empty, label: "CODE", summary: "codemode", nested: [{ ...child, label: "AGENT", summary: "review-team", nested: [grandchild] }] };
+	const text = layout("rail", parent, 100, false).map((l) => l.map((s) => s.t).join("")).join("\n");
+	assert.ok(text.includes("│   └─● READ"), "the grandchild hangs one spine further out, not nowhere");
+	// Every direction can reach it: ledger hides its nested block until the row is open, the others
+	// draw it while collapsed too.
+	for (const { id } of DIRECTIONS) {
+		for (const open of id === "ledger" ? [true] : [true, false]) {
+			const lines = layout(id, parent, 100, open);
+			assert.ok(lines.map((l) => l.map((s) => s.t).join("")).join("\n").includes("inner.ts"), `${id}: the grandchild is drawn (open: ${open})`);
+			for (const line of lines) assert.ok(segsWidth(line) <= 100, `${id}: nested lines fit the width`);
+		}
+	}
+}
+
 /* ---- untrusted text cannot inject a control character --------------- */
 {
-	const CONTROL = /[\r\n\t\f\v\u0085\u2028\u2029]/;
+	const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 	for (const { id } of DIRECTIONS) {
 		for (const open of [false, true]) {
 			for (const cols of WIDTHS) {
